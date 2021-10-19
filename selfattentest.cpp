@@ -43,7 +43,7 @@ void test(){
     size_t num_attention_heads = 2;
     size_t size_per_head = 3;
     size_t seq_length = 4;
-    MutiheadselfAttn<float> selfatten(names, graph, 5, 10, 2, 3);
+    MutiheadselfAttn<float> selfatten(names, graph, 5, 10, 1, 3);
     float tensor[48] = {0, 1, 2, 3, 4, 5,
                         6, 7, 8, 9, 10, 11,
                         12, 13, 14, 15, 16, 17,

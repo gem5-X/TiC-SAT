@@ -68,7 +68,7 @@ namespace lh{
         value_layer->compute(batch_size, seq_len, input, value_layer_out);
 
 
-
+        std::cout<< "Num heads : "<< num_heads_ <<std::endl;
         attn_qk<T>(batch_size, num_heads_, seq_len, head_hidden_size_, query_layer_out, key_layer_out, attention_scores, q_array, k_array, pointer_qk_array);
 
         for(std::size_t idx = 0; idx < batch_size; idx++){

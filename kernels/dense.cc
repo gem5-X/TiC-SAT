@@ -33,6 +33,7 @@ namespace lh{
         else bias = nullptr;
 
         weight_observer = nullptr;
+        matMul = new MatMul<T>();
     }
 
     template<class T>
@@ -43,20 +44,9 @@ namespace lh{
 
     template<>
     void Dense<float>::multiplyweight(std::size_t batch_size, std::size_t seq_len, float* input, float* output){
-
+        matMul->compute(batch_size, seq_len, input, output, weight, input_size_, output_size_);
 //        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, batch_size*seq_len, output_size_, input_size_, 1.0f,
 //        input, input_size_, weight, output_size_, 0.0f, output, output_size_);
-        for (int b=0; b < batch_size; b++){
-            for (int length=0; length< seq_len; length++){
-                for (int out_idx=0; out_idx < output_size_; out_idx ++){
-                    float sum = 0.0;
-                    for (int i=0; i< input_size_; i++){
-                        sum += weight[out_idx* input_size_ + i] * input[(b*seq_len+length) * input_size_ + i];
-                    }
-                    output[(b*seq_len+length) * output_size_ + out_idx] = sum;
-                }
-            }
-        }
     }
 
     template<>

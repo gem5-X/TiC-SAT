@@ -6,6 +6,7 @@
 // #include <string>
 #include "util.h"
 #include "quantization.h"
+#include "matmul.h"
 
 namespace lh
 {
@@ -33,6 +34,7 @@ namespace lh
             std::size_t output_size_;
             T *weight; // shape [input_size_, output_size_]
             T *bias;   // shape [output_size_]
+            MatMul <T>* matMul;
 
     };
 } // namespace lh
