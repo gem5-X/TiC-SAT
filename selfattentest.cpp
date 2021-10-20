@@ -39,10 +39,10 @@ void test(){
 
     vector<string> names = {"query/weight", "query/bias", "key/weight", "key/bias", "value/weight", "value/bias"};
 
-    size_t batch_size = 2;
+    size_t batch_size = 1;
     size_t num_attention_heads = 2;
     size_t size_per_head = 3;
-    size_t seq_length = 4;
+    size_t seq_length = 8;
     MutiheadselfAttn<float> selfatten(names, graph, 5, 10, 1, 3);
     float tensor[48] = {0, 1, 2, 3, 4, 5,
                         6, 7, 8, 9, 10, 11,
