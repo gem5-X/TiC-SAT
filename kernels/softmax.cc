@@ -28,6 +28,7 @@ namespace lh{
         for(std::size_t idx = 0; idx < batch_size; idx++){
             T sum = 0;
             for(std::size_t i=idx*stride; i<(idx+1)*stride;i++){
+                float input_i = input[i];
                 output[i] = exp_(input[i]);
                 sum += output[i];
             }

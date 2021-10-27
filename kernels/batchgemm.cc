@@ -15,6 +15,7 @@ namespace lh{
                 pointer_qk_array[idx * num_heads + head_idx] = output + idx * num_heads * seq_len * seq_len + head_idx * seq_len;
                 float sum = 0;
                 for (int i=0; i< seq_len; i++){
+                    sum = 0.0;
                     for (int h=0; h< hidden_size; h++){
                         sum += q_array[idx * num_heads + head_idx][h+ i*hidden_size] * k_array[idx * num_heads + head_idx][h + i*hidden_size];
                     }
@@ -46,6 +47,7 @@ namespace lh{
 
                 float sum = 0;
                 for (int i=0; i< seq_len; i++){
+                    sum = 0.0;
                     for (int h=0; h< hidden_size; h++){
                         sum += sim_array[idx * num_heads + head_idx][h+ i*hidden_size] * value_array[idx * num_heads + head_idx][h + i*hidden_size];
                     }
