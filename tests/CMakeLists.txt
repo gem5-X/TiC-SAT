@@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 14)
 
 
 file(GLOB transformer_SRC
-        "../kernels/matmul.h",
-        "../kernels/matmul.cc"
+        "../kernels/systolic_m2m.h",
+        "../kernels/systolic_m2m.cpp"
         )
 
-add_executable(FvllMontiMatrixMultiplication matmulTest.cpp ${transformer_SRC})
+add_executable(FvllMontiMatrixMultiplication systolicTest.cpp ${transformer_SRC})
