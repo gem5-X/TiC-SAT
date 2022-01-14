@@ -15,6 +15,7 @@ private:
 public:
     SystolicMatrixMultiplication();
     void loadWeights(int row, uint32_t  val);
+    void printWeights();
     uint32_t streamInOut(uint32_t val);
 };
 
