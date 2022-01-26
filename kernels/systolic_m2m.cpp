@@ -30,7 +30,6 @@ uint32_t SystolicMatrixMultiplication::streamInOut(uint32_t val) {
     // Multiply the input to the weight and accumulate to the output
     for (int i=W_DIM*W_DIM-1; i>=0 ; i--){
         outputMemory[i+W_DIM] = (inputMemory[i] * weights[i]) + outputMemory[i];
-//        std::cout << i << "\t"<< (uint32_t) outputMemory[i+W_DIM] << std::endl;
     }
 
     // Return the output

@@ -30,7 +30,7 @@ void test(){
     for (int i=0; i< W_DIM; i++){
         systolicMM.loadWeights(i, weights[i]);
     }
-    systolicMM.printWeights();
+//    systolicMM.printWeights();
     for(uint32_t in : inputArray){
         std::cout<< systolicMM.streamInOut(in) << std::endl;
     }
