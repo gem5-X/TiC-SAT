@@ -23,16 +23,16 @@
 //}
 
 void test(){
-    uint32_t weights[] = {0x01020103, 0x01020103, 0x01020103, 0x01020103};
+    uint32_t weights[] = {0x2010102,0x1030002,0x30103,0x3020103};
 //    uint32_t inputArray[] = {0x00010203, 0x01020304, 0x00010001, 0x01010101};
     uint32_t inputArray[] = {0x00000001, 0x00000102, 0x00030402, 0x01010101, 0x04020300, 0x01000000, 0x02000000, 0, 0, 0, 0};
     SystolicMatrixMultiplication systolicMM;
     for (int i=0; i< W_DIM; i++){
-        systolicMM.loadWeights(i, weights[i]);
+        systolicMM.loadWeights(i, 0,  weights[i]);
     }
-//    systolicMM.printWeights();
+    systolicMM.printWeights();
     for(uint32_t in : inputArray){
-        std::cout<< systolicMM.streamInOut(in) << std::endl;
+        std::cout<< systolicMM.streamInOut(0, in) << std::endl;
     }
 
 //    int input_mat[D_SEQ * D_MODEL];  // "D_SEQ" is the number of rows and "D_MODEL" is the number of columns.

@@ -6,6 +6,8 @@
 #define FVLLMONTIMATRIXMULTIPLICATION_SYSTOLIC_M2M_H
 
 #define W_DIM 4
+#define W_DATA 4
+#define MAX_COL 1
 
 class SystolicMatrixMultiplication {
 private:
@@ -14,9 +16,9 @@ private:
     uint8_t inputMemory[W_DIM * W_DIM]{};
 public:
     SystolicMatrixMultiplication();
-    void loadWeights(int row, uint32_t  val);
+    void loadWeights(int row, int col, uint32_t  val);
     void printWeights();
-    uint32_t streamInOut(uint32_t val);
+    uint32_t streamInOut(int col, uint32_t val);
 };
 
 #endif //FVLLMONTIMATRIXMULTIPLICATION_SYSTOLIC_M2M_H
