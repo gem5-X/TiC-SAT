@@ -45,11 +45,11 @@ void test(){
     for (int i=0; i< W_DIM * MAX_COL; i++){
         systolicMM.loadWeights(i/MAX_COL, i%MAX_COL,  weights[i]);
     }
-    systolicMM.printWeights();
-    std::cout<<std::endl;
+//    systolicMM.printWeights();
+//    std::cout<<std::endl;
 
     for (int i=0; i< 2 *(W_DIM * MAX_COL + 2 * W_DIM -1); i++){
-        std::cout<<  systolicMM.streamInOut(i%MAX_COL, inputArray[i]) << std::endl;
+        std::cout<<std::hex<<systolicMM.streamInOut(i%MAX_COL, inputArray[i]) << std::endl;
 //        systolicMM.streamInOut(i%MAX_COL, inputArray[i]);
 //        std::cout<<std::endl;
     }

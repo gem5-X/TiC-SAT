@@ -29,16 +29,16 @@ uint32_t SystolicMatrixMultiplication::streamInOut(int col, uint32_t val) {
     for (int i=0; i < W_DATA; i++){
         uint8_t currVal = (val >> (8 * (W_DATA - i -1))) & 0xff;
         int row_index = (col*W_DATA+i);
-        mem2d(waitingMemory, W_DIM, row_index, W_DIM-row_index-1) = currVal; // off-diagonal of the waiting memory
+        mem2d(inWaitingMemory, W_DIM, row_index, W_DIM - row_index - 1) = currVal; // off-diagonal of the waiting memory
     }
 
     // If the col is the last on -> start process
     if (col == (MAX_COL - 1)){
         // Shift the waiting memory to the right for skewing
         for (int i = 0; i < W_DIM; i++) {
-            mem2d(inputMemory, W_DIM, i, 0) = mem2d(waitingMemory, W_DIM, i, W_DIM-1);
+            mem2d(inputMemory, W_DIM, i, 0) = mem2d(inWaitingMemory, W_DIM, i, W_DIM - 1);
             for (int j=W_DIM-1; j>0; j--){ // TODO: shift only the right-hand triangle
-                mem2d(waitingMemory, W_DIM, i, j) = mem2d(waitingMemory, W_DIM, i, j-1);
+                mem2d(inWaitingMemory, W_DIM, i, j) = mem2d(inWaitingMemory, W_DIM, i, j - 1);
             }
         }
 
@@ -53,13 +53,23 @@ uint32_t SystolicMatrixMultiplication::streamInOut(int col, uint32_t val) {
                 inputMemory[i*W_DIM + j] = inputMemory[i*W_DIM + j-1];
             }
         }
+
+        // Shift the outWaitingMemory because of the skew in the output
+        for (int j = 0; j < W_DIM; j++) {
+            for (int i=W_DIM-1; i>0; i--){ // TODO: shift only the right-hand triangle
+                mem2d(outWaitingMemory, W_DIM, i, j) = mem2d(outWaitingMemory, W_DIM, i-1, j);
+            }
+            mem2d(outWaitingMemory, W_DIM, 0, j) = mem2d(outputMemory, W_DIM, W_DIM, j);
+        }
     }
+
 
     // Return the output
     uint32_t result = 0;
-    int result_idx = W_DIM*W_DIM + ((col+1)%MAX_COL) * W_DATA;
+    int result_idx = ((col+1)%MAX_COL) * W_DATA;
+//    int result_idx = col * W_DATA;
     for (int i = 0; i < W_DATA; i++) {
-        result |=  outputMemory[result_idx + i]<< (8 * i);
+        result |=  mem2d(outWaitingMemory, W_DIM, W_DIM - result_idx - i - 1, result_idx + i )<< (8 * (W_DATA -i-1));
     }
 
     return result;

@@ -16,7 +16,8 @@ private:
     uint8_t weights[W_DIM * W_DIM]{};
     uint8_t outputMemory[W_DIM * (W_DIM+1)]{};
     uint8_t inputMemory[W_DIM * W_DIM]{};
-    uint8_t waitingMemory[W_DIM * W_DIM]{};
+    uint8_t inWaitingMemory[W_DIM * W_DIM]{};
+    uint8_t outWaitingMemory[W_DIM * W_DIM]{};
 public:
     SystolicMatrixMultiplication();
     void loadWeights(int row, int col, uint32_t  val);
