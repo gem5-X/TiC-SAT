@@ -17,8 +17,11 @@ void SystolicMatrixMultiplication::loadWeights(int row, int col, uint32_t val) {
 }
 
 void SystolicMatrixMultiplication::printWeights() {
-    for (unsigned char data : inputMemory)
-        std::cout << std::hex << (uint32_t) data << std::endl;
+    for (int i=0; i<W_DIM; i++){
+        for (int j=0; j<W_DIM; j++)
+            std::cout << std::hex << (uint32_t) mem2d(weights, W_DIM, i, j) <<  "\t";
+        std::cout << std::endl;
+    }
 }
 
 uint32_t SystolicMatrixMultiplication::streamInOut(int col, uint32_t val) {

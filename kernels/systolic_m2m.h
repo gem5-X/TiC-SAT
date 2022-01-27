@@ -5,9 +5,9 @@
 #ifndef FVLLMONTIMATRIXMULTIPLICATION_SYSTOLIC_M2M_H
 #define FVLLMONTIMATRIXMULTIPLICATION_SYSTOLIC_M2M_H
 
-#define W_DIM 4
+#define W_DIM 8
 #define W_DATA 4
-#define MAX_COL 1
+#define MAX_COL 2
 
 #define mem2d(data,data_len,row,col)   data[((row)*(data_len))+(col)]
 
