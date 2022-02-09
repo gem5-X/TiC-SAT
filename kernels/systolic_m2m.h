@@ -10,6 +10,7 @@
 #define MAX_COL 2
 #define Nx 10
 #define M 24
+#define Pw 16
 
 #define mem2d(data,data_len,row,col)   data[((row)*(data_len))+(col)]
 
