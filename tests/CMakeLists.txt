@@ -9,4 +9,4 @@ file(GLOB transformer_SRC
         "../kernels/systolic_m2m.cpp"
         )
 
-add_executable(FvllMontiMatrixMultiplication systolicTest.cpp ${transformer_SRC})
+add_executable(FvllMontiMatrixMultiplication systolicTest.cpp random_weights.cpp ${transformer_SRC})

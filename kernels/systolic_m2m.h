@@ -5,12 +5,12 @@
 #ifndef FVLLMONTIMATRIXMULTIPLICATION_SYSTOLIC_M2M_H
 #define FVLLMONTIMATRIXMULTIPLICATION_SYSTOLIC_M2M_H
 
-#define KERNEL_DIM 8
+#define KERNEL_DIM 16
 #define W_DATA 4
-#define MAX_COL 2
-#define Nx 10
-#define M 24
-#define Pw 16
+#define MAX_COL 4
+#define Nx 512
+#define M 512
+#define Pw 64
 
 #define mem2d(data,data_len,row,col)   data[((row)*(data_len))+(col)]
 
@@ -27,5 +27,8 @@ public:
     void printWeights();
     uint32_t streamInOut(int col, uint32_t val);
 };
+
+extern uint32_t inputArray[];
+extern uint32_t weights[];
 
 #endif //FVLLMONTIMATRIXMULTIPLICATION_SYSTOLIC_M2M_H
