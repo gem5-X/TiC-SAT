@@ -28,11 +28,17 @@ void test() {
             // Process the multiplication
             int base_col_idx = tileRow * MAX_COL;
             int outputIndex = 0;
+            uint32_t mult;
             for (int i = 0; i < Nx; i++) {
                 for (int j = 0; j < MAX_COL; j++) {
-                    uint32_t mult = systolicMM.streamInOut(j % MAX_COL,
-                                                           mem2d(inputArray, M / W_DATA, i, j + base_col_idx));
-                    if ((i * MAX_COL + j) >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) {
+                    if (j == MAX_COL -1){
+                        mult = systolicMM.streamInOut(mem2d(inputArray, M / W_DATA, i, j + base_col_idx));
+                    }
+                    else{
+                        mult = systolicMM.loadInput(j % MAX_COL,mem2d(inputArray, M / W_DATA, i, j + base_col_idx));
+                    }
+
+                    if ((i * MAX_COL + j) >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) {    // check if the output is valid
                         mem2d(outputArray, Pw / W_DATA, outputIndex / colBlockSize,
                               colStart + outputIndex % colBlockSize) += mult;
                         outputIndex++;
@@ -40,8 +46,13 @@ void test() {
                 }
             }
             for (int i = Nx * MAX_COL; i < MAX_COL * (Nx + 2 * KERNEL_DIM - 1) - 1; i++) {
-                uint32_t mult = systolicMM.streamInOut(i % MAX_COL, 0);
-                if (i >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) {
+                if ((i % MAX_COL) == MAX_COL -1){
+                    mult = systolicMM.streamInOut(0);
+                }
+                else{
+                    mult = systolicMM.loadInput(i % MAX_COL, 0);
+                }
+                if (i >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) { // check if the output is valid
                     mem2d(outputArray, Pw / W_DATA, outputIndex / colBlockSize,
                           colStart + outputIndex % colBlockSize) += mult;
                     outputIndex++;
