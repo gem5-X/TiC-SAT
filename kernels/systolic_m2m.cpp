@@ -24,7 +24,7 @@ void SystolicMatrixMultiplication::printWeights() {
     }
 }
 
-uint32_t SystolicMatrixMultiplication::loadInput(int col, uint32_t val) {
+uint32_t SystolicMatrixMultiplication::inputQueue(int col, uint32_t val) {
     // Split the input to an array
     for (int i=0; i < W_DATA; i++){
         uint8_t currVal = (val >> (8 * (W_DATA - i -1))) & 0xff;

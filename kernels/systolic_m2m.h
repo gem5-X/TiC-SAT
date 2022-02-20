@@ -5,9 +5,9 @@
 #ifndef FVLLMONTIMATRIXMULTIPLICATION_SYSTOLIC_M2M_H
 #define FVLLMONTIMATRIXMULTIPLICATION_SYSTOLIC_M2M_H
 
-#define KERNEL_DIM 16
+#define KERNEL_DIM 8
 #define W_DATA 4
-#define MAX_COL 4
+#define MAX_COL 2
 #define Nx 512
 #define M 2048
 #define Pw 512
@@ -24,7 +24,7 @@ private:
 public:
     SystolicMatrixMultiplication();
     void loadWeights(int row, int col, uint32_t  val);
-    uint32_t loadInput(int col, uint32_t  val);
+    uint32_t inputQueue(int col, uint32_t  val);
     void printWeights();
     uint32_t streamInOut(uint32_t val);
 };

@@ -35,7 +35,7 @@ void test() {
                         mult = systolicMM.streamInOut(mem2d(inputArray, M / W_DATA, i, j + base_col_idx));
                     }
                     else{
-                        mult = systolicMM.loadInput(j % MAX_COL,mem2d(inputArray, M / W_DATA, i, j + base_col_idx));
+                        mult = systolicMM.inputQueue(j % MAX_COL, mem2d(inputArray, M / W_DATA, i, j + base_col_idx));
                     }
 
                     if ((i * MAX_COL + j) >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) {    // check if the output is valid
@@ -50,7 +50,7 @@ void test() {
                     mult = systolicMM.streamInOut(0);
                 }
                 else{
-                    mult = systolicMM.loadInput(i % MAX_COL, 0);
+                    mult = systolicMM.inputQueue(i % MAX_COL, 0);
                 }
                 if (i >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) { // check if the output is valid
                     mem2d(outputArray, Pw / W_DATA, outputIndex / colBlockSize,
