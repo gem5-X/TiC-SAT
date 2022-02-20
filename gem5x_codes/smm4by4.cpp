@@ -3,16 +3,13 @@
 //
 #include <cstdint>
 #include "iostream"
-#define W_DIM 16
 #define W_DATA 4
-#define MAX_COL 4
-#define KERNEL_DIM 16
+#define MAX_COL 2
+#define KERNEL_DIM 8
 #define Nx 512
-#define M 512
-#define Pw 64
-
+#define M 2048
+#define Pw 512
 #define mem2d(data,data_len,row,col)   data[((row)*(data_len))+(col)]
-
 
 extern uint32_t inputArray[];
 extern uint32_t weights[];
@@ -30,14 +27,43 @@ extern uint32_t weights[];
 * -- ra = Unused.
 * -- rn = Parameter y index.
 */
-uint64_t smmStream(uint64_t rm, uint64_t rn)
+uint64_t smmStream(uint64_t rn)
+{
+    uint64_t res;
+
+    __asm__ volatile(
+            "MOV X7, %[input_k];"
+            ".long 0x01081D2A;"
+            "MOV %[output], X10;"
+            : [output] "=r" (res)
+            : [input_k] "r" (rn)
+            : "x7", "x10"
+            );
+
+    return res;
+}
+
+/* CM Core Queue (MVM)
+* Instruction format: |____Opcode___|__rm__|_X|__ra__|__rn__|__rd__|
+* Bits:               |31_________21|20__16|15|14__10|9____5|4____0|
+* Binary layout:      |0010_0001_000|0_1000|_0|001_11|01_001|0_1010|
+* Hex layout:         |__2____1____0|____8_|__|_1____|D____2|____A_|
+* gem5 variables:     |_____________|_Op264|__|_Op364|_Op164|Dest64|
+*
+* Queueing arguments:
+* -- rd = Parameter value.
+* -- rm = Parameter x index.
+* -- ra = Unused.
+* -- rn = Parameter y index.
+*/
+uint64_t smmQueue(uint64_t rm, uint64_t rn)
 {
     uint64_t res;
 
     __asm__ volatile(
             "MOV X9, %[input_j];"
             "MOV X7, %[input_k];"
-            ".long 0x01081D2A;"
+            ".long 0x21089D2A;"
             "MOV %[output], X10;"
             : [output] "=r" (res)
             : [input_j] "r" (rm), [input_k] "r" (rn)
@@ -82,6 +108,9 @@ uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra)
 
 int main() {
     uint32_t outputArray[Nx * Pw / W_DATA] = {0};
+    // Start of the simulation
+    system("m5 resetstats");
+
     for (int tileCol = 0; tileCol < Pw / KERNEL_DIM; tileCol++) {
         std::cout<<"Tile Column : "<<tileCol <<std::endl;
         for (int tileRow = 0; tileRow < M / KERNEL_DIM; tileRow++) {
@@ -100,10 +129,17 @@ int main() {
             // Process the multiplication
             int base_col_idx = tileRow * MAX_COL;
             int outputIndex = 0;
+            uint32_t mult;
             for (int i = 0; i < Nx; i++) {
                 for (int j = 0; j < MAX_COL; j++) {
-                    uint32_t mult = smmStream(j % MAX_COL, mem2d(inputArray, M / W_DATA, i, j + base_col_idx));
-                    if ((i * MAX_COL + j) >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) {
+                    if (j == MAX_COL -1){
+                        mult = smmStream(mem2d(inputArray, M / W_DATA, i, j + base_col_idx));
+                    }
+                    else{
+                        mult = smmQueue(j % MAX_COL, mem2d(inputArray, M / W_DATA, i, j + base_col_idx));
+                    }
+
+                    if ((i * MAX_COL + j) >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) {    // check if the output is valid
                         mem2d(outputArray, Pw / W_DATA, outputIndex / colBlockSize,
                               colStart + outputIndex % colBlockSize) += mult;
                         outputIndex++;
@@ -111,8 +147,13 @@ int main() {
                 }
             }
             for (int i = Nx * MAX_COL; i < MAX_COL * (Nx + 2 * KERNEL_DIM - 1) - 1; i++) {
-                uint32_t mult = smmStream(i % MAX_COL, 0);
-                if (i >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) {
+                if ((i % MAX_COL) == MAX_COL -1){
+                    mult = smmStream(0);
+                }
+                else{
+                    mult = smmQueue(i % MAX_COL, 0);
+                }
+                if (i >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) { // check if the output is valid
                     mem2d(outputArray, Pw / W_DATA, outputIndex / colBlockSize,
                           colStart + outputIndex % colBlockSize) += mult;
                     outputIndex++;
@@ -121,7 +162,8 @@ int main() {
         }
     }
 
-    // Print the output
+    system("m5 dumpstats");
+
     for (int i = 0; i < Nx; i++) {
         for (int j = 0; j < Pw / W_DATA; j++)
             std::cout << std::hex << (uint32_t) mem2d(outputArray, Pw / W_DATA, i, j) << "\t";
