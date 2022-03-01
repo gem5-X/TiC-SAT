@@ -16,10 +16,10 @@
 
 class SystolicMatrixMultiplication {
 private:
-    uint8_t weights[KERNEL_DIM * KERNEL_DIM]{};
-    uint8_t outputMemory[KERNEL_DIM * (KERNEL_DIM + 1)]{};
-    uint8_t inputMemory[KERNEL_DIM * KERNEL_DIM]{};
-    uint8_t inWaitingMemory[KERNEL_DIM * KERNEL_DIM]{};
+    int8_t weights[KERNEL_DIM * KERNEL_DIM]{};
+    int32_t outputMemory[KERNEL_DIM * (KERNEL_DIM + 1)]{};
+    int8_t inputMemory[KERNEL_DIM * KERNEL_DIM]{};
+    int8_t inWaitingMemory[KERNEL_DIM * KERNEL_DIM]{};
     uint8_t outWaitingMemory[KERNEL_DIM * KERNEL_DIM]{};
 public:
     SystolicMatrixMultiplication();

@@ -6,6 +6,8 @@
 #include <iostream>
 #include "../kernels/systolic_m2m.h"
 
+uint32_t add8in32(uint32_t memory, uint32_t systolicResult);
+
 void test() {
     uint32_t outputArray[Nx * Pw / W_DATA] = {0};
 
@@ -39,8 +41,9 @@ void test() {
                     }
 
                     if ((i * MAX_COL + j) >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) {    // check if the output is valid
-                        mem2d(outputArray, Pw / W_DATA, outputIndex / colBlockSize,
-                              colStart + outputIndex % colBlockSize) += mult;
+                        mem2d(outputArray, Pw / W_DATA, outputIndex / colBlockSize, colStart + outputIndex % colBlockSize) =
+                                add8in32(mem2d(outputArray, Pw / W_DATA, outputIndex / colBlockSize,
+                                               colStart + outputIndex % colBlockSize), mult);
                         outputIndex++;
                     }
                 }
@@ -53,8 +56,9 @@ void test() {
                     mult = systolicMM.inputQueue(i % MAX_COL, 0);
                 }
                 if (i >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) { // check if the output is valid
-                    mem2d(outputArray, Pw / W_DATA, outputIndex / colBlockSize,
-                          colStart + outputIndex % colBlockSize) += mult;
+                    mem2d(outputArray, Pw / W_DATA, outputIndex / colBlockSize, colStart + outputIndex % colBlockSize) =
+                    add8in32(mem2d(outputArray, Pw / W_DATA, outputIndex / colBlockSize,
+                                         colStart + outputIndex % colBlockSize), mult);
                     outputIndex++;
                 }
             }
@@ -68,6 +72,21 @@ void test() {
         std::cout << std::endl;
     }
 
+}
+
+uint32_t add8in32(uint32_t memory, uint32_t systolicResult){
+    /*
+     * This function separates every 32-bit input to four 8-bit integers and add them. Then, packing again and
+     * make a 32-bit  unsigned int.
+     */
+    uint32_t result = 0;
+    for (int i = 0; i < W_DATA; i++) {
+        auto mem8 =  (int8_t) ((memory >> (8 * (W_DATA - i -1))) & 0xff);
+        auto sysRes8 =  (int8_t)((systolicResult >> (8 * (W_DATA - i -1))) & 0xff);
+
+        result |= (uint8_t) (mem8 + sysRes8) << (8 * (W_DATA - i - 1));
+    }
+    return result;
 }
 
 int main() {
