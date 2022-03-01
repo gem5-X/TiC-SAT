@@ -12,7 +12,7 @@ using namespace lh;
 int main() {
     uint32_t outputArray[Nx * Pw / W_DATA] = {0};
     MatMulSystolic matMulSystolic;
-    matMulSystolic.compute(0, inputArray, outputArray, weights, 0, 0 );
+    matMulSystolic.compute(Nx, inputArray, outputArray, weights, M, Pw);
 
     // Print the output
     for (int i = 0; i < Nx; i++) {
