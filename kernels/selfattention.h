@@ -4,36 +4,33 @@
 #include "softmax.h"
 #include "batchgemm.h"
 
-namespace lh{
-    template<class T>
-    class MutiheadselfAttn{
-        public:
-            explicit MutiheadselfAttn(std::vector<std::string> names, Graph<T> &pb_graph, std::size_t pre_batch_size, std::size_t pre_seq_len, std::size_t num_heads, std::size_t head_hidden_size);
-            ~MutiheadselfAttn();
-            void compute(std::size_t batch_size, std::size_t seq_len, T *input, uint64_t* mask, T *output);
+class MutiheadselfAttn{
+    public:
+        MutiheadselfAttn(std::vector<std::string> names, std::size_t pre_seq_len, std::size_t num_heads,
+                         std::size_t input_dim_, std::size_t head_hidden_size, std::vector<uint32_t*> weightVector);
+        ~MutiheadselfAttn();
+        void compute(std::size_t batch_size, std::size_t seq_len, uint32_t *input, uint64_t* mask, uint32_t *output);
 
-        private:
-            Dense<T>* query_layer;
-            Dense<T>* key_layer;
-            Dense<T>* value_layer;
-            Softmax<T>* softmax;
+    private:
+        Dense* query_layer;
+        Dense* key_layer;
+        Dense* value_layer;
+//        Softmax<T>* softmax;
 
-            T* query_layer_out;
-            T* key_layer_out;
-            T* value_layer_out;
-            T* attention_scores;
+        uint32_t* query_layer_out;
+        uint32_t* key_layer_out;
+        uint32_t* value_layer_out;
+//        uint32_t* attention_scores;
+//
+//        const uint32_t** q_array;
+//        const uint32_t** k_array;
+//        uint32_t** pointer_qk_array;
+//
+//        const uint32_t** sim_array;
+//        const uint32_t** value_array;
+//        uint32_t** pointer_sv_array;
 
-            const T** q_array;
-            const T** k_array;
-            T** pointer_qk_array;
-
-            const T** sim_array;
-            const T** value_array;
-            T** pointer_sv_array;
-
-            std::size_t pre_batch_size_;
-            std::size_t pre_seq_len_;
-            std::size_t num_heads_;
-            std::size_t head_hidden_size_;
-    };
-}
+        std::size_t pre_seq_len_;
+        std::size_t num_heads_;
+        std::size_t head_hidden_size_;
+};

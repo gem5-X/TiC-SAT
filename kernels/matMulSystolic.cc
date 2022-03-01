@@ -4,11 +4,7 @@
 
 #include "matMulSystolic.h"
 
-lh::MatMulSystolic::MatMulSystolic() = default;
-
-lh::MatMulSystolic::~MatMulSystolic() = default;
-
-void lh::MatMulSystolic::compute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
+void MatMulSystolic::compute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
                                 std::size_t input_size_, std::size_t output_size_) {
 
     SystolicMatrixMultiplication systolicMM;
@@ -66,7 +62,7 @@ void lh::MatMulSystolic::compute(std::size_t seq_len, const uint32_t *input, uin
     }
 }
 
-uint32_t lh::add8in32(uint32_t memory, uint32_t systolicResult) {
+uint32_t MatMulSystolic::add8in32(uint32_t memory, uint32_t systolicResult) {
     /*
      * This function separates every 32-bit input to four 8-bit integers and add them. Then, packing again and
      * make a 32-bit  unsigned int.

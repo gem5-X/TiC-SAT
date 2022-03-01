@@ -6,35 +6,24 @@
 // #include <string>
 #include "util.h"
 #include "quantization.h"
-#include "matmul.h"
+#include "matMulSystolic.h"
 
-namespace lh
-{
-    template <class T>
-    class Dense
-    {
-        public:
-            // using Param = std::pair<std::vector<std::size_t>, T *>;
-            // using Graph = std::unordered_map<std::string, Param>;
-            explicit Dense(std::vector<std::string> names, Graph<T> &pb_graph);
-            ~Dense();
-            
-            void compute(std::size_t batch_size, std::size_t seq_len, float *input, float *output);
-            
-            void addobserver(float average_constant);
-            void calibration(std::size_t batch_size, std::size_t seq_len, float *input, float *output);
+class Dense {
+public:
+    Dense(std::vector<std::string> names, std::size_t input_dim, std::size_t output_dim, uint32_t *weight);
 
-            Observer* weight_observer;
+    ~Dense();
 
-        private:
-        void multiplyweight(std::size_t batch_size, std::size_t seq_len, float *input, float *output);
-        void addbias(std::size_t batch_size, std::size_t seq_len, float *output);
-            
-            std::size_t input_size_;
-            std::size_t output_size_;
-            T *weight; // shape [input_size_, output_size_]
-            T *bias;   // shape [output_size_]
-            MatMul <T>* matMul;
+    void compute(std::size_t batch_size, std::size_t seq_len, uint32_t *input, uint32_t *output);
 
-    };
-} // namespace lh
+private:
+    void multiplyweight(std::size_t batch_size, std::size_t seq_len, uint32_t *input, uint32_t *output);
+
+    void addbias(std::size_t batch_size, std::size_t seq_len, uint32_t *output);
+
+    std::size_t input_size_;
+    std::size_t output_size_;
+    uint32_t *weight; // shape [input_size_, output_size_]
+    uint32_t *bias;   // shape [output_size_]
+
+};

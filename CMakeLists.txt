@@ -8,6 +8,8 @@ file(GLOB transformer_SRC
         "kernels/*.h"
         "kernels/*.cc"
         "kernels/matMulSystolic.*"
+        "kernels/matMulSystolic.h"
+        "kernels/systolic_m2m.cpp"
         )
 
 add_executable(FvllMontiTransformer selfattentest.cpp ${transformer_SRC})
