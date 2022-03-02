@@ -3,12 +3,11 @@
 #include <cmath>
 #include <iostream>
 
-SingleHeadSelfAttn::SingleHeadSelfAttn(std::vector<std::string> names, std::size_t pre_seq_len, std::size_t num_heads,
+SingleHeadSelfAttn::SingleHeadSelfAttn(std::vector<std::string> names, std::size_t pre_seq_len,
                                        std::size_t input_dim, std::size_t head_hidden_size,
-                                       std::vector<uint32_t *> weightVector) {
+                                       uint32_t ** weightVector) {
 
     pre_seq_len_ = pre_seq_len;
-    num_heads_ = num_heads;
     head_hidden_size_ = head_hidden_size;
 
     auto startit = names.begin();
@@ -21,13 +20,13 @@ SingleHeadSelfAttn::SingleHeadSelfAttn(std::vector<std::string> names, std::size
     startit += 2;
     std::vector<std::string> value_names(startit, startit + 2);
     value_layer = new Dense(query_names, input_dim, head_hidden_size, weightVector[2]);
-    //        softmax = new Softmax<uint32_t>();
+    softmax = new Softmax();
 
-    query_layer_out = new uint32_t[pre_seq_len * head_hidden_size * num_heads >> 2];
-    key_layer_out = new uint32_t[pre_seq_len * head_hidden_size * num_heads >> 2];
-    key_transposed_layer_out = new uint32_t[pre_seq_len * head_hidden_size * num_heads >> 2];
-    value_layer_out = new uint32_t[pre_seq_len * head_hidden_size * num_heads >> 2];
-    attention_scores = new uint32_t[pre_seq_len * pre_seq_len * num_heads >> 2];
+    query_layer_out = new uint32_t[pre_seq_len * head_hidden_size >> 2];
+    key_layer_out = new uint32_t[pre_seq_len * head_hidden_size >> 2];
+    key_transposed_layer_out = new uint32_t[pre_seq_len * head_hidden_size >> 2];
+    value_layer_out = new uint32_t[pre_seq_len * head_hidden_size >> 2];
+    attention_scores = new uint32_t[pre_seq_len * pre_seq_len >> 2];
 //
 //        q_array = new const uint32_t *[pre_batch_size * num_heads];
 //        k_array = new const uint32_t *[pre_batch_size * num_heads];
