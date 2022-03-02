@@ -16,12 +16,18 @@ TransformerBlock::TransformerBlock(std::vector<std::string> names, std::size_t p
         selfatten[n] = new SingleHeadSelfAttn(names, pre_seq_len, input_dim, head_hidden_size, weightVector+n*3);
     }
 
+    addNorm = new AddNormalize(pre_seq_len, input_dim);
+
 }
+
+TransformerBlock::~TransformerBlock() = default;
 
 void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *output) {
 
     for (int n=0; n<num_heads_; n++){
         selfatten[n]->compute(seq_len, input, output + n * (seq_len*head_hidden_size_ >> 2));
     }
+
+    addNorm->compute(input, output);
 
 }
