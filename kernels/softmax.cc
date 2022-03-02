@@ -1,43 +1,41 @@
 #include "softmax.h"
 #include <cmath>
 #include <iostream>
+//
+//    float exp_<float>(float input){
+//        return expf(input);
+//    }
+//
+//    float sum_<float>(float sum){
+//        return sum > 1e-22f ? sum : 1e-22f;
+//    }
 
-namespace lh{
-    template<>
-    float exp_<float>(float input){
-        return expf(input);
-    }
+static const  int8_t lookup[8] = {
+    0, 0, 0, 1, 0, 0, 0, 0
+};
 
-    template<>
-    float sum_<float>(float sum){
-        return sum > 1e-22f ? sum : 1e-22f;
-    }
+Softmax::Softmax()= default;
 
-    template<class T>
-    Softmax<T>::Softmax(){
-        
-    }
+Softmax::~Softmax()= default;
 
-    template<class T>
-    Softmax<T>::~Softmax(){
+void Softmax::compute(uint32_t *input, std::size_t seq_len){
+    for (int i =0; i< seq_len; i++){
+        int32_t sum = 0;
+        auto* input_ptr = (int8_t*) (input + i * (seq_len >> 2));
 
-    }
-
-    template<class T>
-    void Softmax<T>::compute(std::size_t batch_size, std::size_t stride, T *input, T *output){
-        for(std::size_t idx = 0; idx < batch_size; idx++){
-            T sum = 0;
-            for(std::size_t i=idx*stride; i<(idx+1)*stride;i++){
-                float input_i = input[i];
-                output[i] = exp_(input[i]);
-                sum += output[i];
-            }
-            sum = sum_(sum);
-            for(std::size_t i=idx*stride; i<(idx+1)*stride;i++){
-                output[i] = output[i] / sum; 
-            }
+        for (int j=0; j< seq_len; j++){
+            *(input_ptr) = lookup[(* (uint8_t *) input_ptr) >> 5]; // divide by the sqrt od the d_q which is sqrt(64) -> 8
+            // TODO: better LUT
+            sum += *(input_ptr);
+            input_ptr ++;
+        }
+//        std::cout << "EXP " << i << "\t: " << sum << std::endl;
+        input_ptr = (int8_t*) (input + i * (seq_len >> 2));
+        for (int j=0; j< seq_len; j++){
+//            std::cout << "Ptr " << i << "\t: " << (int) *(input_ptr)  << std::endl;
+            *(input_ptr) = (int8_t) ((*(input_ptr) << 7) /sum);
+//            std::cout << "LUT " << i << "\t: " << (int) *(input_ptr) << std::endl;
+            input_ptr ++;
         }
     }
-
-    template class Softmax<float>;
 }

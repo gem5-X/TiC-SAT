@@ -6,22 +6,16 @@
 // #include <string>
 #include "util.h"
 
-namespace lh
+//    T exp_(T input);
+//
+//    T sum_(T sum);
+
+class Softmax
 {
-    template<class T>
-    T exp_(T input);
+    public:
+        explicit Softmax();
+        ~Softmax();
+        void compute(uint32_t *input, std::size_t seq_len);
+    private:
 
-    template<class T>
-    T sum_(T sum);
-
-    template <class T>
-    class Softmax
-    {
-        public:
-            explicit Softmax();
-            ~Softmax();
-            void compute(std::size_t batch_size, std::size_t stride, T *input, T *output);
-        private:
-
-    };
-} // namespace lh
+};
