@@ -14,12 +14,12 @@ public:
 
     ~Dense();
 
-    void compute(std::size_t batch_size, std::size_t seq_len, uint32_t *input, uint32_t *output);
+    void compute(std::size_t seq_len, uint32_t *input, uint32_t *output);
 
 private:
-    void multiplyweight(std::size_t batch_size, std::size_t seq_len, uint32_t *input, uint32_t *output);
+    void multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *output);
 
-    void addbias(std::size_t batch_size, std::size_t seq_len, uint32_t *output);
+    void addbias(std::size_t seq_len, uint32_t *output);
 
     std::size_t input_size_;
     std::size_t output_size_;

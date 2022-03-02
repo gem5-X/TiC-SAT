@@ -39,7 +39,7 @@ void test(){
     size_t num_attention_heads = 1;
     size_t size_per_head = 3;
     size_t seq_length = D_SEQ;
-    MutiheadselfAttn selfatten(names, D_SEQ, 1, D_MODEL, D_Q, weightVec);
+    SingleHeadSelfAttn selfatten(names, D_SEQ, 1, D_MODEL, D_Q, weightVec);
     uint32_t tensor_in[D_SEQ * D_MODEL >> 2];
     fill_kernel(tensor_in, D_SEQ * D_MODEL >> 2);
     uint64_t mask[1];
@@ -47,7 +47,7 @@ void test(){
 
     uint32_t out[D_SEQ*D_Q >> 2];
 
-    selfatten.compute(batch_size, seq_length, tensor_in, mask, out);
+    selfatten.compute(seq_length, tensor_in, out);
 }
 
 int main() {

@@ -19,26 +19,26 @@ Dense::~Dense() {
 //    delete[] bias;
 }
 
-void Dense::multiplyweight(std::size_t batch_size, std::size_t seq_len, uint32_t *input, uint32_t *output) {
+void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *output) {
     MatMulSystolic::compute(seq_len, input, output, weight, input_size_, output_size_);
 }
 
-void Dense::addbias(std::size_t batch_size, std::size_t seq_len, uint32_t *output) {
+void Dense::addbias(std::size_t seq_len, uint32_t *output) {
 
-    for (std::size_t idx = 0; idx < batch_size * seq_len; idx++) {
+    for (std::size_t idx = 0; idx < seq_len; idx++) {
         for (std::size_t feature_idx = 0; feature_idx < output_size_; feature_idx++) {
             output[idx * output_size_ + feature_idx] += bias[feature_idx];
         }
     }
 }
 
-void Dense::compute(std::size_t batch_size, std::size_t seq_len, uint32_t *input, uint32_t *output) {
+void Dense::compute(std::size_t seq_len, uint32_t *input, uint32_t *output) {
     // input shape [batch_size, input_size_]
     // output shape [batch_size, output_size_]
 
-    multiplyweight(batch_size, seq_len, input, output);
+    multiplyweight(seq_len, input, output);
     // add bias vector here
     if (bias != nullptr) {
-        addbias(batch_size, seq_len, output);
+        addbias(seq_len, output);
     }
 }
