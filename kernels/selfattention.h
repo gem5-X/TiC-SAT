@@ -15,12 +15,13 @@ class MutiheadselfAttn{
         Dense* query_layer;
         Dense* key_layer;
         Dense* value_layer;
-//        Softmax<T>* softmax;
+        Softmax* softmax;
 
         uint32_t* query_layer_out;
         uint32_t* key_layer_out;
+        uint32_t* key_transposed_layer_out;
         uint32_t* value_layer_out;
-//        uint32_t* attention_scores;
+        uint32_t* attention_scores;
 //
 //        const uint32_t** q_array;
 //        const uint32_t** k_array;
