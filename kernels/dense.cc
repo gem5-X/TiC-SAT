@@ -4,8 +4,7 @@
 #include <memory.h>
 #include <iostream>
 
-Dense::Dense(std::vector<std::string> names, std::size_t input_size, std::size_t  output_size, uint32_t *weightDense) {
-    std::string name_w = names[0];
+Dense::Dense(std::size_t input_size, std::size_t  output_size, uint32_t *weightDense) {
     input_size_  = input_size;
     output_size_ = output_size;
     std::cout << "Input Size : " << input_size_ << std::endl;

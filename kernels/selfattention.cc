@@ -3,23 +3,15 @@
 #include <cmath>
 #include <iostream>
 
-SingleHeadSelfAttn::SingleHeadSelfAttn(std::vector<std::string> names, std::size_t pre_seq_len,
-                                       std::size_t input_dim, std::size_t head_hidden_size,
+SingleHeadSelfAttn::SingleHeadSelfAttn(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size,
                                        uint32_t ** weightVector) {
 
     pre_seq_len_ = pre_seq_len;
     head_hidden_size_ = head_hidden_size;
 
-    auto startit = names.begin();
-
-    std::vector<std::string> query_names(startit, startit + 2);
-    query_layer = new Dense(query_names, input_dim, head_hidden_size, weightVector[0]);
-    startit += 2;
-    std::vector<std::string> key_names(startit, startit + 2);
-    key_layer = new Dense(query_names, input_dim, head_hidden_size, weightVector[1]);
-    startit += 2;
-    std::vector<std::string> value_names(startit, startit + 2);
-    value_layer = new Dense(query_names, input_dim, head_hidden_size, weightVector[2]);
+    query_layer = new Dense(input_dim, head_hidden_size, weightVector[0]);
+    key_layer = new Dense(input_dim, head_hidden_size, weightVector[1]);
+    value_layer = new Dense(input_dim, head_hidden_size, weightVector[2]);
     softmax = new Softmax();
 
     query_layer_out = new uint32_t[pre_seq_len * head_hidden_size >> 2];

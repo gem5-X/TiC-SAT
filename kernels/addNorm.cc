@@ -21,8 +21,12 @@ void AddNormalize::compute(uint32_t *input, uint32_t *output) {
             output_ptr ++;
             input_ptr ++;
         }
+
+        output_ptr = (int8_t*) (output + i * (input_dim_ >> 2));
+        auto mean = (int32_t) (sum / input_dim_);
         for (int j=0; j< input_dim_; j++){
-            *output_ptr = (int8_t) (*output_ptr / (sum >> 2));
+            *output_ptr = (int8_t) (*output_ptr - mean);
+            output_ptr ++;
         }
 
     }

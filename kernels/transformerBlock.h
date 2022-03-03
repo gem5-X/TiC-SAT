@@ -3,15 +3,15 @@
 //
 #include "selfattention.h"
 #include "addNorm.h"
+#include "dense.h"
 
 #ifndef FVLLMONTITRANSFORMER_MULTIHEADSELFATTENTION_H
 #define FVLLMONTITRANSFORMER_MULTIHEADSELFATTENTION_H
 
 class TransformerBlock{
 public:
-    TransformerBlock(std::vector<std::string> names, std::size_t pre_seq_len,
-                     std::size_t input_dim, std::size_t head_hidden_size, std::size_t num_heads,
-                     uint32_t ** weightVector);
+    TransformerBlock(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size, std::size_t num_heads,
+                     std::size_t ff_size, uint32_t ** weightVector);
 
     virtual ~TransformerBlock();
 
@@ -20,8 +20,14 @@ public:
 private:
     std::size_t num_heads_;
     std::size_t head_hidden_size_;
+    std::size_t ff_size_;
     SingleHeadSelfAttn* selfatten[8];
+    uint32_t* multihead_out;
+    uint32_t* intermediateFF;
     AddNormalize* addNorm;
+    Dense* feedForward0;
+    Dense* feedForward1;
+
 };
 
 #endif //FVLLMONTITRANSFORMER_MULTIHEADSELFATTENTION_H

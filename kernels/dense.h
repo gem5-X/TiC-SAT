@@ -10,7 +10,7 @@
 
 class Dense {
 public:
-    Dense(std::vector<std::string> names, std::size_t input_dim, std::size_t output_dim, uint32_t *weight);
+    Dense(std::size_t input_dim, std::size_t output_dim, uint32_t *weight);
 
     ~Dense();
 

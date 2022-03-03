@@ -5,19 +5,23 @@
 #include "transformerBlock.h"
 
 
-TransformerBlock::TransformerBlock(std::vector<std::string> names, std::size_t pre_seq_len,
-                                   std::size_t input_dim, std::size_t head_hidden_size, std::size_t num_heads,
-                                   uint32_t ** weightVector) {
+TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size,
+                                   std::size_t num_heads, std::size_t ff_size, uint32_t ** weightVector) {
 
     num_heads_ = num_heads;
     head_hidden_size_ = head_hidden_size;
+    ff_size_ = ff_size;
 
     for (int n =0; n< num_heads; n++){
-        selfatten[n] = new SingleHeadSelfAttn(names, pre_seq_len, input_dim, head_hidden_size, weightVector+n*3);
+        selfatten[n] = new SingleHeadSelfAttn(pre_seq_len, input_dim, head_hidden_size, weightVector+n*3);
     }
 
-    addNorm = new AddNormalize(pre_seq_len, input_dim);
+    multihead_out = new uint32_t[pre_seq_len * input_dim >> 2];
+    intermediateFF = new uint32_t[pre_seq_len * ff_size >> 2];
 
+    addNorm = new AddNormalize(pre_seq_len, input_dim);
+    feedForward0 = new Dense(input_dim, ff_size, weightVector[num_heads * 3]);
+    feedForward1 = new Dense(ff_size, input_dim, weightVector[num_heads * 3 + 1]);
 }
 
 TransformerBlock::~TransformerBlock() = default;
@@ -25,9 +29,13 @@ TransformerBlock::~TransformerBlock() = default;
 void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *output) {
 
     for (int n=0; n<num_heads_; n++){
-        selfatten[n]->compute(seq_len, input, output + n * (seq_len*head_hidden_size_ >> 2));
+        std::cout << "Head : " << n << std::endl;
+        selfatten[n]->compute(seq_len, input, multihead_out + n * (seq_len * head_hidden_size_ >> 2));
     }
+    std::cout << "Add Norm"  << std::endl;
+    addNorm->compute(input, multihead_out);
 
-    addNorm->compute(input, output);
-
+    std::cout << "Feed Forward 0"  << std::endl;
+    feedForward0->compute(seq_len, multihead_out, intermediateFF);
+    feedForward1->compute(seq_len, intermediateFF, output);
 }

@@ -6,8 +6,7 @@
 
 class SingleHeadSelfAttn{
     public:
-        SingleHeadSelfAttn(std::vector<std::string> names, std::size_t pre_seq_len,
-                           std::size_t input_dim_, std::size_t head_hidden_size, uint32_t** weightVector);
+        SingleHeadSelfAttn(std::size_t pre_seq_len, std::size_t input_dim_, std::size_t head_hidden_size, uint32_t** weightVector);
         ~SingleHeadSelfAttn();
         void compute(std::size_t seq_len, uint32_t *input, uint32_t *output);
 
