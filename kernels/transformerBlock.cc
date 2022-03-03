@@ -35,18 +35,26 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
 TransformerBlock::~TransformerBlock() = default;
 
 void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *output) {
-
+    system("m5 resetstats");
     for (int n=0; n<num_heads_; n++){
         std::cout << "Head : " << n << std::endl;
         selfatten[n]->compute(seq_len, input, multihead_out + n * (seq_len * head_hidden_size_ >> 2));
     }
+    system("m5 dumpresetstats");
+
     std::cout << "Add Norm"  << std::endl;
     addNorm->compute(input, multihead_out);
+    system("m5 dumpresetstats");
 
     std::cout << "Feed Forward 0"  << std::endl;
     feedForward0->compute(seq_len, multihead_out, intermediateFF);
+    system("m5 dumpresetstats");
+
     std::cout << "Feed Forward 1"  << std::endl;
     feedForward1->compute(seq_len, intermediateFF, output);
+    system("m5 dumpresetstats");
+
     std::cout << "Add Norm"  << std::endl;
     addNorm->compute(multihead_out, output);
+    system("m5 dumpresetstats");
 }
