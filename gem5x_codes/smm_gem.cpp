@@ -29,83 +29,83 @@ void add8in32(uint32_t &memory, uint32_t &systolicResult);
 * -- ra = Unused.
 * -- rn = Parameter y index.
 */
-//uint64_t smmStream(uint64_t rn)
-//{
-//    uint64_t res;
-//
-//    __asm__ volatile(
-//            "MOV X7, %[input_k];"
-//            ".long 0x01081D2A;"
-//            "MOV %[output], X10;"
-//            : [output] "=r" (res)
-//            : [input_k] "r" (rn)
-//            : "x7", "x10"
-//            );
-//
-//    return res;
-//}
-//
-///* CM Core Queue (MVM)
-//* Instruction format: |____Opcode___|__rm__|_X|__ra__|__rn__|__rd__|
-//* Bits:               |31_________21|20__16|15|14__10|9____5|4____0|
-//* Binary layout:      |0010_0001_000|0_1000|_0|001_11|01_001|0_1010|
-//* Hex layout:         |__2____1____0|____8_|__|_1____|D____2|____A_|
-//* gem5 variables:     |_____________|_Op264|__|_Op364|_Op164|Dest64|
-//*
-//* Queueing arguments:
-//* -- rd = Parameter value.
-//* -- rm = Parameter x index.
-//* -- ra = Unused.
-//* -- rn = Parameter y index.
-//*/
-//uint64_t smmQueue(uint64_t rm, uint64_t rn)
-//{
-//    uint64_t res;
-//
-//    __asm__ volatile(
-//            "MOV X9, %[input_j];"
-//            "MOV X7, %[input_k];"
-//            ".long 0x21089D2A;"
-//            "MOV %[output], X10;"
-//            : [output] "=r" (res)
-//            : [input_j] "r" (rm), [input_k] "r" (rn)
-//            : "x7", "x9", "x10"
-//            );
-//
-//    return res;
-//}
-//
-///* CM Core Parameter Write
-// * Instruction format: |____Opcode___|__rm__|_?|__ra__|__rn__|__rd__|
-// * Bits:               |31_________21|20__16|15|14__10|9____5|4____0|
-// * Binary layout:      |0100_0001_000|0_1000|_0|001_11|01_001|0_1010|
-// * Hex layout:         |__4____1____0|____8_|__|_1____|D____2|____A_|
-// * gem5 variables:     |_____________|_Op264|__|_Op364|_Op164|Dest64|
-// *
-// * Queueing arguments:
-// * -- rd = Success code.
-// * -- rm = Parameter x index.
-// * -- ra = Parameter value.
-// * -- rn = Parameter y index.
-// */
-//uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra)
-//{
-//    uint64_t res;
-//
-//    __asm__ volatile(
-//            "MOV X8, %[input_i];"
-//            "MOV X9, %[input_j];"
-//            "MOV X7, %[input_k];"
-//            ".long 0x41081D2A;"
-//            "MOV %[output], X10;"
-//            : [output] "=r" (res)
-//            : [input_i] "r" (ra), [input_j] "r" (rm), [input_k] "r" (rn)
-//            : "x7", "x8", "x9", "x10"
-//            );
-//
-//    return res;
-//
-//}
+uint64_t smmStream(uint64_t rn)
+{
+    uint64_t res;
+
+    __asm__ volatile(
+            "MOV X7, %[input_k];"
+            ".long 0x01081D2A;"
+            "MOV %[output], X10;"
+            : [output] "=r" (res)
+            : [input_k] "r" (rn)
+            : "x7", "x10"
+            );
+
+    return res;
+}
+
+/* CM Core Queue (MVM)
+* Instruction format: |____Opcode___|__rm__|_X|__ra__|__rn__|__rd__|
+* Bits:               |31_________21|20__16|15|14__10|9____5|4____0|
+* Binary layout:      |0010_0001_000|0_1000|_0|001_11|01_001|0_1010|
+* Hex layout:         |__2____1____0|____8_|__|_1____|D____2|____A_|
+* gem5 variables:     |_____________|_Op264|__|_Op364|_Op164|Dest64|
+*
+* Queueing arguments:
+* -- rd = Parameter value.
+* -- rm = Parameter x index.
+* -- ra = Unused.
+* -- rn = Parameter y index.
+*/
+uint64_t smmQueue(uint64_t rm, uint64_t rn)
+{
+    uint64_t res;
+
+    __asm__ volatile(
+            "MOV X9, %[input_j];"
+            "MOV X7, %[input_k];"
+            ".long 0x21089D2A;"
+            "MOV %[output], X10;"
+            : [output] "=r" (res)
+            : [input_j] "r" (rm), [input_k] "r" (rn)
+            : "x7", "x9", "x10"
+            );
+
+    return res;
+}
+
+/* CM Core Parameter Write
+ * Instruction format: |____Opcode___|__rm__|_?|__ra__|__rn__|__rd__|
+ * Bits:               |31_________21|20__16|15|14__10|9____5|4____0|
+ * Binary layout:      |0100_0001_000|0_1000|_0|001_11|01_001|0_1010|
+ * Hex layout:         |__4____1____0|____8_|__|_1____|D____2|____A_|
+ * gem5 variables:     |_____________|_Op264|__|_Op364|_Op164|Dest64|
+ *
+ * Queueing arguments:
+ * -- rd = Success code.
+ * -- rm = Parameter x index.
+ * -- ra = Parameter value.
+ * -- rn = Parameter y index.
+ */
+uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra)
+{
+    uint64_t res;
+
+    __asm__ volatile(
+            "MOV X8, %[input_i];"
+            "MOV X9, %[input_j];"
+            "MOV X7, %[input_k];"
+            ".long 0x41081D2A;"
+            "MOV %[output], X10;"
+            : [output] "=r" (res)
+            : [input_i] "r" (ra), [input_j] "r" (rm), [input_k] "r" (rn)
+            : "x7", "x8", "x9", "x10"
+            );
+
+    return res;
+
+}
 
 
 void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
@@ -122,7 +122,7 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
             for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
                 for (int j = colStart; j < colStart + colBlockSize; j++) {
                     uint32_t weight = mem2d(weights, output_size_ / W_DATA, i, j);
-//                    smmParamWrite(i - rowStart, j - colStart, weight);
+                    smmParamWrite(i - rowStart, j - colStart, weight);
                 }
             }
 
@@ -133,9 +133,9 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
             for (int i = 0; i < seq_len; i++) {
                 for (int j = 0; j < MAX_COL; j++) {
                     if (j == MAX_COL - 1) {
-//                        mult = smmStream(mem2d(input, input_size_ / W_DATA, i, j + base_col_idx));
+                        mult = smmStream(mem2d(input, input_size_ / W_DATA, i, j + base_col_idx));
                     } else {
-//                        mult = smmQueue(j % MAX_COL, mem2d(input, input_size_ / W_DATA, i, j + base_col_idx));
+                        mult = smmQueue(j % MAX_COL, mem2d(input, input_size_ / W_DATA, i, j + base_col_idx));
                     }
 
                     if ((i * MAX_COL + j) >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) {    // check if the output is valid
@@ -147,9 +147,9 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
             }
             for (int i = seq_len * MAX_COL; i < MAX_COL * (seq_len + 2 * KERNEL_DIM - 1) - 1; i++) {
                 if ((i % MAX_COL) == MAX_COL - 1) {
-//                    mult = smmStream(0);
+                    mult = smmStream(0);
                 } else {
-//                    mult = smmQueue(i % MAX_COL, 0);
+                    mult = smmQueue(i % MAX_COL, 0);
                 }
                 if (i >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) { // check if the output is valid
                     add8in32(mem2d(output, output_size_ / W_DATA, outputIndex / colBlockSize,
