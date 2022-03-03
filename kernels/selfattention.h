@@ -3,6 +3,7 @@
 #include "dense.h"
 #include "softmax.h"
 #include "batchgemm.h"
+#include "../gem5x_codes/smm_gem.h"
 
 class SingleHeadSelfAttn{
     public:

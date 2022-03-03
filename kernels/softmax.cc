@@ -33,7 +33,7 @@ void Softmax::compute(uint32_t *input, std::size_t seq_len){
         input_ptr = (int8_t*) (input + i * (seq_len >> 2));
         for (int j=0; j< seq_len; j++){
 //            std::cout << "Ptr " << i << "\t: " << (int) *(input_ptr)  << std::endl;
-            *(input_ptr) = (int8_t) ((*(input_ptr) << 7) /sum);
+            *(input_ptr) = (int8_t) ((*(input_ptr) << 7) /(sum+1));
 //            std::cout << "LUT " << i << "\t: " << (int) *(input_ptr) << std::endl;
             input_ptr ++;
         }

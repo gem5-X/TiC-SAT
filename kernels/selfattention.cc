@@ -50,8 +50,8 @@ void SingleHeadSelfAttn::compute(std::size_t seq_len, uint32_t *input, uint32_t 
     key_layer->compute(seq_len, input, key_layer_out);
     value_layer->compute(seq_len, input, value_layer_out);
     Transpose::transpose(key_layer_out, key_transposed_layer_out, head_hidden_size_, pre_seq_len_);
-    MatMulSystolic::compute(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, head_hidden_size_,
+    conventionalCompute(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, head_hidden_size_,
                             seq_len);
     softmax->compute(attention_scores, seq_len);
-    MatMulSystolic::compute(seq_len, attention_scores, output, value_layer_out, seq_len, head_hidden_size_);
+    conventionalCompute(seq_len, attention_scores, output, value_layer_out, seq_len, head_hidden_size_);
 }

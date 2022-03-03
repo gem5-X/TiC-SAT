@@ -45,6 +45,8 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
 
     std::cout << "Feed Forward 0"  << std::endl;
     feedForward0->compute(seq_len, multihead_out, intermediateFF);
+    std::cout << "Feed Forward 1"  << std::endl;
     feedForward1->compute(seq_len, intermediateFF, output);
+    std::cout << "Add Norm"  << std::endl;
     addNorm->compute(multihead_out, output);
 }

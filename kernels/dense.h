@@ -7,6 +7,7 @@
 #include "util.h"
 #include "quantization.h"
 #include "matMulSystolic.h"
+#include "../gem5x_codes/smm_gem.h"
 
 class Dense {
 public:
