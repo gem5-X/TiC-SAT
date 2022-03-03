@@ -7,12 +7,9 @@
 #include "../kernels/systolic_m2m.h"
 #include "../kernels/matMulSystolic.h"
 
-using namespace lh;
-
 int main() {
     uint32_t outputArray[Nx * Pw / W_DATA] = {0};
-    MatMulSystolic matMulSystolic;
-    matMulSystolic.compute(Nx, inputArray, outputArray, weights, M, Pw);
+    MatMulSystolic::compute(Nx, inputArray, outputArray, weights, M, Pw);
 
     // Print the output
     for (int i = 0; i < Nx; i++) {
