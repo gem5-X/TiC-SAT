@@ -7,7 +7,7 @@ void fill_kernel(uint32_t* kernel, int kernel_size){
     for(int i=0; i<kernel_size; i++){
         uint32_t result = 0;
         for (int j=0; j<4; j++){
-            result |=  ((uint8_t)(rand() % 5  - 2)) << (8 * (4 - i - 1));
+            result |=  ((uint8_t)(rand() % 5  - 2)) << (8 * j);
         }
         kernel[i]=result;
     }

@@ -4,6 +4,14 @@
 
 #include "transformerBlock.h"
 
+void print_out(uint32_t* output_array, std::size_t width , std::size_t seq_len){
+    for (int i = 0; i < seq_len; i++) {
+        for (int j = 0; j < width >> 2; j++)
+            std::cout << std::hex << (uint32_t) output_array[i*(width >> 2) + j] << "\t";
+        std::cout << std::endl;
+    }
+}
+
 
 TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size,
                                    std::size_t num_heads, std::size_t ff_size, uint32_t ** weightVector) {
@@ -38,4 +46,5 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     std::cout << "Feed Forward 0"  << std::endl;
     feedForward0->compute(seq_len, multihead_out, intermediateFF);
     feedForward1->compute(seq_len, intermediateFF, output);
+    addNorm->compute(multihead_out, output);
 }
