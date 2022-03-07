@@ -5,11 +5,11 @@
 #include <cstdlib>
 #include <iostream>
 #include "../kernels/systolic_m2m.h"
-#include "../kernels/matMulSystolic.h"
+#include "../gem5x_codes/smm_gem.h"
 
 int main() {
     uint32_t outputArray[Nx * Pw / W_DATA] = {0};
-    MatMulSystolic::compute(Nx, inputArray, outputArray, weights, M, Pw);
+    conventionalCompute(Nx, inputArray, outputArray, weights, M, Pw);
 
     // Print the output
     for (int i = 0; i < Nx; i++) {
