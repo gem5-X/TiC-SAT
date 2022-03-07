@@ -23,8 +23,10 @@ private:
     std::size_t ff_size_;
     SingleHeadSelfAttn* selfatten[8];
     uint32_t* multihead_out;
+    uint32_t* condense_out;
     uint32_t* intermediateFF;
     AddNormalize* addNorm;
+    Dense* condense;
     Dense* feedForward0;
     Dense* feedForward1;
 

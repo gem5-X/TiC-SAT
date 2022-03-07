@@ -24,12 +24,15 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
         selfatten[n] = new SingleHeadSelfAttn(pre_seq_len, input_dim, head_hidden_size, weightVector+n*3);
     }
 
-    multihead_out = new uint32_t[pre_seq_len * input_dim >> 2];
+    condense = new Dense(num_heads* head_hidden_size, input_dim, weightVector[num_heads * 3]);
+
+    multihead_out = new uint32_t[pre_seq_len * num_heads * head_hidden_size >> 2];
+    condense_out = new uint32_t[pre_seq_len * input_dim >> 2];
     intermediateFF = new uint32_t[pre_seq_len * ff_size >> 2];
 
     addNorm = new AddNormalize(pre_seq_len, input_dim);
-    feedForward0 = new Dense(input_dim, ff_size, weightVector[num_heads * 3]);
-    feedForward1 = new Dense(ff_size, input_dim, weightVector[num_heads * 3 + 1]);
+    feedForward0 = new Dense(input_dim, ff_size, weightVector[num_heads * 3+ 1]);
+    feedForward1 = new Dense(ff_size, input_dim, weightVector[num_heads * 3 + 2]);
 }
 
 TransformerBlock::~TransformerBlock() = default;
@@ -42,12 +45,16 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     }
     system("m5 dumpresetstats");
 
+    std::cout << "Condense"  << std::endl;
+    condense->compute(seq_len, multihead_out, condense_out);
+    system("m5 dumpresetstats");
+
     std::cout << "Add Norm"  << std::endl;
-    addNorm->compute(input, multihead_out);
+    addNorm->compute(input, condense_out);
     system("m5 dumpresetstats");
 
     std::cout << "Feed Forward 0"  << std::endl;
-    feedForward0->compute(seq_len, multihead_out, intermediateFF);
+    feedForward0->compute(seq_len, condense_out, intermediateFF);
     system("m5 dumpresetstats");
 
     std::cout << "Feed Forward 1"  << std::endl;
