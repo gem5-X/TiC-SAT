@@ -7,8 +7,8 @@
 #include "smm_gem.h"
 
 #define W_DATA 4
-#define MAX_COL 1
-#define KERNEL_DIM 4
+#define MAX_COL 4
+#define KERNEL_DIM 16
 #define mem2d(data,data_len,row,col)   data[((row)*(data_len))+(col)]
 
 void add8in32(uint32_t &memory, uint32_t &systolicResult);
@@ -185,20 +185,31 @@ void print_arr(uint32_t* array, int n, int p){
 
 void conventionalCompute(std::size_t seq_len, const uint32_t * input, uint32_t * output, uint32_t *weight,
                         std::size_t input_size_, std::size_t output_size_){
-    for (int length=0; length< seq_len; length++){
-        for (int out_idx=0; out_idx < (output_size_ / W_DATA); out_idx ++){
-            // std::cout<< "out : " << out_idx << std::endl;
-            auto* weight_ptr = (int8_t*) (weight + out_idx);
-            auto* output_ptr = (int8_t*) (output + (length * output_size_ /W_DATA) + out_idx);
-            for (int w=0; w<W_DATA; w++){
-                auto* input_ptr = (int8_t*) (input + (length * input_size_ / W_DATA));
-                int sum = 0;
-                for (int i=0; i< input_size_; i++){
-                    sum += *(weight_ptr + i*output_size_ + w) * (*(input_ptr));
-                    input_ptr ++;
+    int ROW_BLOCKS = 16;
+    int COL_BLOCKS = 16;
+
+    for (int blk_row_idx=0; blk_row_idx< (input_size_/ROW_BLOCKS); blk_row_idx++){
+        for (int blk_col_idx=0; blk_col_idx < (output_size_/ COL_BLOCKS); blk_col_idx ++){
+            for (int in_idx = 0; in_idx < seq_len; in_idx++){
+                for (int col=0; col< COL_BLOCKS; col++){
+                    auto* input_ptr = (int8_t*) (input +
+                            (in_idx * input_size_ / W_DATA) +   // index of the input row
+                            blk_row_idx * ROW_BLOCKS/W_DATA);   // block index
+                            auto* output_ptr = (int8_t*) (output +
+                                    (in_idx * output_size_ / W_DATA) +
+                                    blk_col_idx * COL_BLOCKS/ W_DATA);
+                            auto* weight_ptr = (int8_t*) (weight +
+                                    blk_row_idx * ROW_BLOCKS * output_size_ / W_DATA +
+                                    blk_col_idx * COL_BLOCKS/W_DATA);
+                            int sum = 0;
+                            for (int i = 0; i < ROW_BLOCKS; i ++){
+                                sum += *(input_ptr + i) * *(weight_ptr + i * output_size_ + col);
+                            }
+                            * (output_ptr  + col)= (int8_t)((* (output_ptr+ col)) + sum);
                 }
-                *(output_ptr + w) = (int8_t) sum;
             }
+
+
         }
     }
 }
