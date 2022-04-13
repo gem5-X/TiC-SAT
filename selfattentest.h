@@ -7,8 +7,8 @@
 
 #define D_Q 64
 #define D_SEQ 512
-#define D_MODEL 512
-#define NUM_HEAD 8
-#define D_FF 2048
+#define D_MODEL 768
+#define NUM_HEAD 12
+#define D_FF 3072
 
 #endif //FVLLMONTITRANSFORMER_SELFATTENTEST_H

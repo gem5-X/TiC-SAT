@@ -21,7 +21,7 @@ private:
     std::size_t num_heads_;
     std::size_t head_hidden_size_;
     std::size_t ff_size_;
-    SingleHeadSelfAttn* selfatten[8];
+    SingleHeadSelfAttn* selfatten[16];
     uint32_t* multihead_out;
     uint32_t* condense_out;
     uint32_t* intermediateFF;

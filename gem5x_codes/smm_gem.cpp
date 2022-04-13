@@ -192,8 +192,8 @@ void conventionalCompute(std::size_t seq_len, const uint32_t *input, uint32_t *o
                 for (int i = 0; i < input_size_; i++) {
                     sum += *(weight_ptr + (i + 3-2*(i%W_DATA)) * output_size_ + w) * (*(input_ptr));
                     input_ptr++;
-                    *(output_ptr + w) = (int8_t) sum;
                 }
+                *(output_ptr + w) = (int8_t) sum;
             }
         }
     }
