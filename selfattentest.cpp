@@ -21,23 +21,17 @@ void test(){
     uint32_t * weightVec[3*NUM_HEAD+3];
 
     for (int n=0; n<NUM_HEAD; n++){
-        uint32_t query_kernel[D_Q* D_MODEL >> 2];
+        auto query_kernel = new uint32_t [D_Q* D_MODEL >> 2];
         fill_kernel(query_kernel, D_Q* D_MODEL >> 2);
         weightVec[n*3] = query_kernel;
-        uint32_t query_bias[D_Q >> 2];
-        fill_kernel(query_bias, D_Q >> 2);
 
-        uint32_t key_kernel[ D_Q* D_MODEL >> 2];
+        auto key_kernel = new uint32_t [ D_Q* D_MODEL >> 2];
         fill_kernel(key_kernel, D_Q* D_MODEL>> 2);
         weightVec[n*3 + 1] = key_kernel;
-        uint32_t key_bias[D_Q >> 2];
-        fill_kernel(key_bias, D_Q>> 2);
 
-        uint32_t value_kernel[ D_Q* D_MODEL >> 2];
+        auto value_kernel = new uint32_t [ D_Q* D_MODEL >> 2];
         fill_kernel(value_kernel, D_Q* D_MODEL >> 2);
         weightVec[n*3 + 2] = value_kernel;
-        uint32_t value_bias[D_Q >> 2];
-        fill_kernel(value_bias, D_Q >> 2);
     }
 
     uint32_t condense_kernel[ NUM_HEAD * D_Q * D_MODEL >> 2];
