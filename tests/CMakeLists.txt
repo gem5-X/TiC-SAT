@@ -14,7 +14,7 @@ file(GLOB transformer_SRC
         "../kernels/systolic_m2m.cpp"
         "../kernels/matMulSystolic.cc"
         "../kernels/matMulSystolic.h"
-        "../gem5x_codes/smm_gem.cpp"
+#        "../gem5x_codes/smm_gem.cpp"
         )
 
 #add_executable(FvllMontiMatrixMultiplication matmulTest.cpp output_8bit.cpp ${transformer_SRC})

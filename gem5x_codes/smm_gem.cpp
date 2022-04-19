@@ -106,31 +106,33 @@ uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra) {
 void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
                 std::size_t input_size_, std::size_t output_size_) {
 
-    for (int tileCol = 0; tileCol < output_size_ / KERNEL_DIM; tileCol++) {
-        std::cout << "Tile Column : " << tileCol << std::endl;
-        for (int tileRow = 0; tileRow < input_size_ / KERNEL_DIM; tileRow++) {
+    for (int tileRow = 0; tileRow < input_size_ / KERNEL_DIM; tileRow++) {
+        for (int tileCol = 0; tileCol < output_size_ / KERNEL_DIM; tileCol++) {
             // Load the kernel with the corresponding weight
             int rowStart = tileRow * KERNEL_DIM;
             int colStart = tileCol * KERNEL_DIM / W_DATA;
             int rowBlockSize = KERNEL_DIM;
             int colBlockSize = KERNEL_DIM / W_DATA;
+            uint32_t* wPtr = weights + rowStart * (output_size_/W_DATA);
             for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
                 for (int j = colStart; j < colStart + colBlockSize; j++) {
-                    uint32_t weight = mem2d(weights, output_size_ / W_DATA, i, j);
+                    uint32_t weight = * (wPtr + j);
                     smmParamWrite(i - rowStart, j - colStart, weight);
                 }
+                wPtr += output_size_ / W_DATA;
             }
 
             // Process the multiplication
             int base_col_idx = tileRow * MAX_COL;
             int outputIndex = 0;
             uint32_t mult;
+            const uint32_t * inPtr = input + base_col_idx;
             for (int i = 0; i < seq_len; i++) {
                 for (int j = 0; j < MAX_COL; j++) {
                     if (j == MAX_COL - 1) {
-                        mult = smmStream(mem2d(input, input_size_ / W_DATA, i, j + base_col_idx));
+                        mult = smmStream(*(inPtr + j));
                     } else {
-                        mult = smmQueue(j % MAX_COL, mem2d(input, input_size_ / W_DATA, i, j + base_col_idx));
+                        mult = smmQueue(j % MAX_COL, *(inPtr + j));
                     }
 
                     if ((i * MAX_COL + j) >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) {    // check if the output is valid
@@ -139,6 +141,7 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                         outputIndex++;
                     }
                 }
+                inPtr += (input_size_ / W_DATA);
             }
             for (int i = seq_len * MAX_COL; i < MAX_COL * (seq_len + 2 * KERNEL_DIM - 1) - 1; i++) {
                 if ((i % MAX_COL) == MAX_COL - 1) {
