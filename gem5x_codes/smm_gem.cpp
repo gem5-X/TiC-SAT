@@ -215,7 +215,7 @@ void conventionalCompute(std::size_t seq_len, const uint32_t *input, uint32_t *o
                 auto *input_ptr = (int8_t *) (input + (length * input_size_ / W_DATA));
                 int sum = 0;
                 for (int i = 0; i < input_size_; i++) {
-                    sum += *(weight_ptr + (i + 3-2*(i%W_DATA)) * output_size_ + w) * (*(input_ptr));
+                    sum += *(weight_ptr + (i + 3 - 2 * (i % W_DATA)) * output_size_ + w) * (*(input_ptr));
                     input_ptr++;
                 }
                 *(output_ptr + w) = (int8_t) sum;
@@ -224,32 +224,36 @@ void conventionalCompute(std::size_t seq_len, const uint32_t *input, uint32_t *o
     }
 }
 
-void conventionalTiledCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output,
-                              uint32_t *weight,
-                              std::size_t input_size_, std::size_t output_size_) {
-    int ROW_BLOCKS = 16;
-    int COL_BLOCKS = 16;
+void tiledCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weight,
+                  std::size_t input_size_, std::size_t output_size_) {
+    int ROWS_IN_BLOCK = 64;
+    int COLS_IN_BLOCK = 128;
+    int W_COL_BLOCKS = 64;
 
-    for (int blk_row_idx = 0; blk_row_idx < (input_size_ / ROW_BLOCKS); blk_row_idx++) {
-        for (int blk_col_idx = 0; blk_col_idx < (output_size_ / COL_BLOCKS); blk_col_idx++) {
-            for (int in_idx = 0; in_idx < seq_len; in_idx++) {
-                for (int col = 0; col < COL_BLOCKS; col++) {
-                    auto *input_ptr = (int8_t *) (input +
-                                                  (in_idx * input_size_ / W_DATA) +
-                                                  // index of the input row
-                                                  blk_row_idx * ROW_BLOCKS / W_DATA);   // block index
-                    auto *output_ptr = (int8_t *) (output +
-                                                   (in_idx * output_size_ / W_DATA) +
-                                                   blk_col_idx * COL_BLOCKS / W_DATA);
-                    auto *weight_ptr = (int8_t *) (weight +
-                                                   blk_row_idx * ROW_BLOCKS * output_size_ / W_DATA +
-                                                   blk_col_idx * COL_BLOCKS / W_DATA);
-                    int sum = 0;
-                    for (int i = 0; i < ROW_BLOCKS; i++) {
-                        sum += *(input_ptr + i) *
-                               *(weight_ptr + (i + 3 - 2 * (i % W_DATA)) * output_size_ + col); // a bias is added because of the endianness
+    for (int blk_row_idx = 0; blk_row_idx < (seq_len / ROWS_IN_BLOCK); blk_row_idx++) {
+        for (int blk_col_idx = 0; blk_col_idx < (input_size_ / COLS_IN_BLOCK); blk_col_idx++) {
+            for (int w_blk_col_idx = 0; w_blk_col_idx < (output_size_ / W_COL_BLOCKS); w_blk_col_idx++) {
+                for (int i = 0; i < ROWS_IN_BLOCK; i++) {
+                    for (int j = 0; j < W_COL_BLOCKS; j++) {
+                        auto *input_ptr = (int8_t *) (input +
+                                                      ((blk_row_idx * ROWS_IN_BLOCK + i) * input_size_ / W_DATA) +
+                                                      // index of the input row
+                                                      blk_col_idx * COLS_IN_BLOCK / W_DATA);   // block index
+                        auto *output_ptr = (int8_t *) (output +
+                                                       ((blk_row_idx * ROWS_IN_BLOCK + i) * output_size_ / W_DATA) +
+                                                       w_blk_col_idx * W_COL_BLOCKS / W_DATA);
+                        auto *weight_ptr = (int8_t *) (weight +
+                                                       blk_col_idx * COLS_IN_BLOCK * output_size_ / W_DATA +
+                                                       w_blk_col_idx * W_COL_BLOCKS / W_DATA
+                        );
+                        int sum = 0;
+                        for (int k = 0; k < COLS_IN_BLOCK; k++) {
+                            sum += *(input_ptr + k) *
+                                   *(weight_ptr + (k + 3 - 2 * (k % W_DATA)) * output_size_ + j);
+                            // a bias is added because of the endianness
+                        }
+                        *(output_ptr + j) = (int8_t) ((*(output_ptr + j)) + sum);
                     }
-                    *(output_ptr + col) = (int8_t) ((*(output_ptr + col)) + sum);
                 }
             }
         }
