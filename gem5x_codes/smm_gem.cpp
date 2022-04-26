@@ -112,11 +112,11 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
     int rowMaxL1 = std::min(L1_DIM, (int) (input_size_ / KERNEL_DIM));
     int colMaxL1 = std::min(L1_DIM, (int) (input_size_ / KERNEL_DIM));
     int rowMaxL2 = std::min(L2_DIM, (int) (input_size_ / KERNEL_DIM / rowMaxL1));
-    int colMaxL2 = std::min(L2_DIM*2, (int) (output_size_ / KERNEL_DIM / colMaxL1));
-    std::cout<< rowMaxL2 << "\t\t" << colMaxL2 <<std::endl;
-    for (int l2Row=0; l2Row < (input_size_ / KERNEL_DIM) / rowMaxL2 / rowMaxL1; l2Row++){
-        for (int l2Col=0; l2Col < (output_size_ / KERNEL_DIM) / colMaxL2 / colMaxL1; l2Col++){
-            for (int seqBlockIdx = 0 ; seqBlockIdx < SEQ_BLOCKS; seqBlockIdx++){
+    int colMaxL2 = std::min(L2_DIM * 2, (int) (output_size_ / KERNEL_DIM / colMaxL1));
+    std::cout << rowMaxL2 << "\t\t" << colMaxL2 << std::endl;
+    for (int l2Row = 0; l2Row < (input_size_ / KERNEL_DIM) / rowMaxL2 / rowMaxL1; l2Row++) {
+        for (int l2Col = 0; l2Col < (output_size_ / KERNEL_DIM) / colMaxL2 / colMaxL1; l2Col++) {
+            for (int seqBlockIdx = 0; seqBlockIdx < SEQ_BLOCKS; seqBlockIdx++) {
                 for (int tileRowL2 = 0; tileRowL2 < rowMaxL2; tileRowL2++) {
                     for (int tileColL2 = 0; tileColL2 < colMaxL2; tileColL2++) {
                         for (int tileRowL1 = 0; tileRowL1 < rowMaxL1; tileRowL1++) {
@@ -128,22 +128,23 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                 int colStart = (l2Col * colMaxL2 * colMaxL1 + tileCol) * KERNEL_DIM / W_DATA;
                                 int rowBlockSize = KERNEL_DIM;
                                 int colBlockSize = KERNEL_DIM / W_DATA;
-                                uint32_t* wPtr = weights + rowStart * (output_size_/W_DATA);
+                                uint32_t *wPtr = weights + rowStart * (output_size_ / W_DATA);
                                 for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
                                     for (int j = colStart; j < colStart + colBlockSize; j++) {
-                                        uint32_t weight = * (wPtr + j);
+                                        uint32_t weight = *(wPtr + j);
                                         smmParamWrite(i - rowStart, j - colStart, weight);
                                     }
                                     wPtr += output_size_ / W_DATA;
                                 }
 
                                 // Process the multiplication
-                                int base_col_idx = (l2Row * rowMaxL2* rowMaxL1 + tileRow) * MAX_COL;
-                                int seqBlockLen = (int)(seq_len/SEQ_BLOCKS);
-                                int outputIndex =  0;
-                                uint32_t * outPtr = output + seqBlockIdx  * seqBlockLen * (output_size_/ W_DATA);
+                                int base_col_idx = (l2Row * rowMaxL2 * rowMaxL1 + tileRow) * MAX_COL;
+                                int seqBlockLen = (int) (seq_len / SEQ_BLOCKS);
+                                int outputIndex = 0;
+                                uint32_t *outPtr = output + seqBlockIdx * seqBlockLen * (output_size_ / W_DATA);
                                 uint32_t mult;
-                                const uint32_t * inPtr = input + base_col_idx + seqBlockIdx* seqBlockLen *(input_size_ / W_DATA);
+                                const uint32_t *inPtr =
+                                        input + base_col_idx + seqBlockIdx * seqBlockLen * (input_size_ / W_DATA);
                                 for (int i = 0; i < seqBlockLen; i++) {
                                     for (int j = 0; j < MAX_COL; j++) {
                                         if (j == MAX_COL - 1) {
@@ -152,7 +153,8 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                             mult = smmQueue(j % MAX_COL, *(inPtr + j));
                                         }
 
-                                        if ((i * MAX_COL + j) >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) {    // check if the output is valid
+                                        if ((i * MAX_COL + j) >=
+                                            (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) {    // check if the output is valid
                                             add8in32(mem2d(outPtr, output_size_ / W_DATA, outputIndex / colBlockSize,
                                                            colStart + outputIndex % colBlockSize), mult);
                                             outputIndex++;
@@ -160,7 +162,8 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                     }
                                     inPtr += (input_size_ / W_DATA);
                                 }
-                                for (int i = seqBlockLen * MAX_COL; i < MAX_COL * (seqBlockLen + 2 * KERNEL_DIM - 1) - 1; i++) {
+                                for (int i = seqBlockLen * MAX_COL;
+                                     i < MAX_COL * (seqBlockLen + 2 * KERNEL_DIM - 1) - 1; i++) {
                                     if ((i % MAX_COL) == MAX_COL - 1) {
                                         mult = smmStream(0);
                                     } else {
@@ -228,31 +231,46 @@ void tiledCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, 
                   std::size_t input_size_, std::size_t output_size_) {
     int ROWS_IN_BLOCK = 64;
     int COLS_IN_BLOCK = 128;
-    int W_COL_BLOCKS = 64;
+    int W_COL_BLOCKS = 64; // Maximum: 64
 
-    for (int blk_row_idx = 0; blk_row_idx < (seq_len / ROWS_IN_BLOCK); blk_row_idx++) {
-        for (int blk_col_idx = 0; blk_col_idx < (input_size_ / COLS_IN_BLOCK); blk_col_idx++) {
-            for (int w_blk_col_idx = 0; w_blk_col_idx < (output_size_ / W_COL_BLOCKS); w_blk_col_idx++) {
-                for (int i = 0; i < ROWS_IN_BLOCK; i++) {
-                    for (int j = 0; j < W_COL_BLOCKS; j++) {
-                        auto *input_ptr = (int8_t *) (input +
-                                                      ((blk_row_idx * ROWS_IN_BLOCK + i) * input_size_ / W_DATA) +
-                                                      // index of the input row
-                                                      blk_col_idx * COLS_IN_BLOCK / W_DATA);   // block index
-                        auto *output_ptr = (int8_t *) (output +
-                                                       ((blk_row_idx * ROWS_IN_BLOCK + i) * output_size_ / W_DATA) +
-                                                       w_blk_col_idx * W_COL_BLOCKS / W_DATA);
-                        auto *weight_ptr = (int8_t *) (weight +
-                                                       blk_col_idx * COLS_IN_BLOCK * output_size_ / W_DATA +
-                                                       w_blk_col_idx * W_COL_BLOCKS / W_DATA
-                        );
-                        int sum = 0;
-                        for (int k = 0; k < COLS_IN_BLOCK; k++) {
-                            sum += *(input_ptr + k) *
-                                   *(weight_ptr + (k + 3 - 2 * (k % W_DATA)) * output_size_ + j);
-                            // a bias is added because of the endianness
+    int ROWS_IN_L2 = std::min(512 / ROWS_IN_BLOCK, (int) (seq_len / ROWS_IN_BLOCK));
+    int COLS_IN_L2 = std::min(512 / COLS_IN_BLOCK, (int) (input_size_ / COLS_IN_BLOCK));
+    int W_COL_IN_L2 = std::min(512 / W_COL_BLOCKS, (int) (output_size_ / W_COL_BLOCKS));
+
+    for (int blk_row_idx = 0; blk_row_idx < (seq_len / ROWS_IN_BLOCK / ROWS_IN_L2); blk_row_idx++) {
+        for (int blk_col_idx = 0; blk_col_idx < (input_size_ / COLS_IN_BLOCK / COLS_IN_L2); blk_col_idx++) {
+            for (int w_blk_col_idx = 0; w_blk_col_idx < (output_size_ / W_COL_BLOCKS / W_COL_IN_L2); w_blk_col_idx++) {
+                for (int l2_row_idx = 0; l2_row_idx < ROWS_IN_L2; l2_row_idx++) {
+                    for (int l2_col_idx = 0; l2_col_idx < COLS_IN_L2; l2_col_idx++) {
+                        for (int l2_w_idx = 0; l2_w_idx < W_COL_IN_L2; l2_w_idx++) {
+                            for (int i = 0; i < ROWS_IN_BLOCK; i++) {
+                                auto *input_ptr = (int8_t *) (input +
+                                                              (((blk_row_idx * ROWS_IN_L2 + l2_row_idx) *
+                                                                ROWS_IN_BLOCK + i) * input_size_ / W_DATA) +
+                                                              // index of the input row
+                                                              (blk_col_idx * COLS_IN_L2 + l2_col_idx) * COLS_IN_BLOCK /
+                                                              W_DATA);   // block index
+                                auto *output_ptr = (int8_t *) (output +
+                                                               (((blk_row_idx * ROWS_IN_L2 + l2_row_idx) *
+                                                                 ROWS_IN_BLOCK + i) * output_size_ / W_DATA) +
+                                                               (w_blk_col_idx * W_COL_IN_L2 + l2_w_idx) * W_COL_BLOCKS /
+                                                               W_DATA);
+                                auto *weight_ptr = (int8_t *) (weight +
+                                                               (blk_col_idx * COLS_IN_L2 + l2_col_idx) * COLS_IN_BLOCK *
+                                                               output_size_ / W_DATA +
+                                                               (w_blk_col_idx * W_COL_IN_L2 + l2_w_idx) * W_COL_BLOCKS /
+                                                               W_DATA);
+                                for (int j = 0; j < W_COL_BLOCKS; j++) {
+                                    int sum = 0;
+                                    for (int k = 0; k < COLS_IN_BLOCK; k++) {
+                                        sum += *(input_ptr + k) *
+                                               *(weight_ptr + (k + 3 - 2 * (k % W_DATA)) * output_size_ + j);
+                                        // a bias is added because of the endianness
+                                    }
+                                    *(output_ptr + j) = (int8_t) ((*(output_ptr + j)) + sum);
+                                }
+                            }
                         }
-                        *(output_ptr + j) = (int8_t) ((*(output_ptr + j)) + sum);
                     }
                 }
             }
