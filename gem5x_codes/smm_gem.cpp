@@ -112,9 +112,9 @@ uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra) {
 void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
                 std::size_t input_size_, std::size_t output_size_) {
 
-    int ROWS_IN_BLOCK = 64;
-    int rowMaxL1 = 128 / KERNEL_DIM;
-    int colMaxL1 = 64 / KERNEL_DIM;
+    int ROWS_IN_BLOCK = std::min(64, (int) (seq_len));;
+    int rowMaxL1 = std::min(128, (int) (input_size_)) / KERNEL_DIM;
+    int colMaxL1 = std::min(64, (int) (output_size_)) / KERNEL_DIM;
     int ROWS_IN_L2 = std::min(512, (int) (seq_len)) / ROWS_IN_BLOCK;
     int rowMaxL2 = std::min(512, (int) (input_size_)) / KERNEL_DIM / rowMaxL1;
     int colMaxL2 = std::min(512, (int) (output_size_)) / KERNEL_DIM / colMaxL1;
@@ -238,9 +238,9 @@ void conventionalCompute(std::size_t seq_len, const uint32_t *input, uint32_t *o
 
 void tiledCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weight,
                   std::size_t input_size_, std::size_t output_size_) {
-    int ROWS_IN_BLOCK = 64;
-    int COLS_IN_BLOCK = 128;
-    int W_COL_BLOCKS = 64; // Maximum: 64
+    int ROWS_IN_BLOCK = std::min(64, (int) (seq_len));;
+    int COLS_IN_BLOCK = std::min(128, (int) (input_size_));;
+    int W_COL_BLOCKS = std::min(64, (int) (output_size_));
 
     int ROWS_IN_L2 = std::min(512 / ROWS_IN_BLOCK, (int) (seq_len / ROWS_IN_BLOCK));
     int COLS_IN_L2 = std::min(512 / COLS_IN_BLOCK, (int) (input_size_ / COLS_IN_BLOCK));

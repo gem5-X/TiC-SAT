@@ -14,6 +14,7 @@ void fill_kernel(uint32_t* kernel, int kernel_size){
 }
 
 void test(){
+    std::cout<<"First line" << std::endl;
     uint32_t tensor_in[D_SEQ * D_MODEL >> 2];
     fill_kernel(tensor_in, D_SEQ * D_MODEL >> 2);
     uint32_t out[D_SEQ*D_MODEL >> 2];
@@ -38,11 +39,11 @@ void test(){
     fill_kernel(condense_kernel, NUM_HEAD * D_Q * D_MODEL >> 2);
     weightVec[NUM_HEAD*3] = condense_kernel;
 
-    uint32_t ff0_kernel[ D_MODEL* D_FF >> 2];
+    auto ff0_kernel = new uint32_t [ D_MODEL* D_FF >> 2];
     fill_kernel(ff0_kernel, D_MODEL* D_FF >> 2);
     weightVec[NUM_HEAD*3+1] = ff0_kernel;
 
-    uint32_t ff1_kernel[ D_FF* D_MODEL >> 2];
+    auto ff1_kernel = new uint32_t [ D_FF* D_MODEL >> 2];
     fill_kernel(ff1_kernel, D_FF* D_MODEL >> 2);
     weightVec[NUM_HEAD*3 + 2] = ff1_kernel;
 

@@ -8,9 +8,9 @@ void MatMulSystolic::compute(std::size_t seq_len, const uint32_t *input, uint32_
                              std::size_t input_size_, std::size_t output_size_) {
 
     SystolicMatrixMultiplication systolicMM;
-    int ROWS_IN_BLOCK = 64;
-    int rowMaxL1 = 128 / KERNEL_DIM;
-    int colMaxL1 = 64 / KERNEL_DIM;
+    int ROWS_IN_BLOCK = std::min(64, (int) (seq_len));;
+    int rowMaxL1 = std::min(128, (int) (input_size_)) / KERNEL_DIM;
+    int colMaxL1 = std::min(64, (int) (output_size_)) / KERNEL_DIM;
     int ROWS_IN_L2 = std::min(512, (int) (seq_len)) / ROWS_IN_BLOCK;
     int rowMaxL2 = std::min(512, (int) (input_size_)) / KERNEL_DIM / rowMaxL1;
     int colMaxL2 = std::min(512, (int) (output_size_)) / KERNEL_DIM / colMaxL1;
