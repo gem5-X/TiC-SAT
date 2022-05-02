@@ -27,7 +27,7 @@ void MatMulSystolic::compute(std::size_t seq_len, const uint32_t *input, uint32_
                                 for (int tileColL1 = 0; tileColL1 < colMaxL1; tileColL1++) {
                                     int tileRow = tileRowL2 * rowMaxL1 + tileRowL1;
                                     int tileCol = tileColL2 * colMaxL1 + tileColL1;
-                                    int seqBlockIdx = l2In * ROWS_IN_BLOCK + tileInL2;
+                                    int seqBlockIdx = l2In * ROWS_IN_L2 + tileInL2;
 
                                     // Load the kernel with the corresponding weight
                                     int rowStart = (l2Row * rowMaxL2 * rowMaxL1 + tileRow) * KERNEL_DIM;

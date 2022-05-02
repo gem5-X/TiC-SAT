@@ -14,7 +14,7 @@
 #define SEQ_BLOCKS 16
 #define mem2d(data, data_len, row, col)   data[((row)*(data_len))+(col)]
 
-#define DEVELOP
+//#define DEVELOP
 
 #ifndef DEVELOP
 void add8in32(uint32_t &memory, uint32_t &systolicResult);
@@ -131,7 +131,7 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                 for (int tileColL1 = 0; tileColL1 < colMaxL1; tileColL1++) {
                                     int tileRow = tileRowL2 * rowMaxL1 + tileRowL1;
                                     int tileCol = tileColL2 * colMaxL1 + tileColL1;
-                                    int seqBlockIdx = l2In * ROWS_IN_BLOCK + tileInL2;
+                                    int seqBlockIdx = l2In * ROWS_IN_L2 + tileInL2;
                                     // Load the kernel with the corresponding weight
                                     int rowStart = (l2Row * rowMaxL2 * rowMaxL1 + tileRow) * KERNEL_DIM;
                                     int colStart = (l2Col * colMaxL2 * colMaxL1 + tileCol) * KERNEL_DIM / W_DATA;
