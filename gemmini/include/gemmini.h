@@ -13,6 +13,7 @@
 #include <stdbool.h>
 
 #include "gemmini_params.h"
+#include "smm_gem.h"
 
 #define GEMMINI_ASSERTIONS
 
@@ -394,6 +395,10 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         int act, acc_scale_t scale, acc_scale_t bert_scale, bool repeating_bias) {
 
+    printf("DIM I: %d, DIM J: %d, DIM_K: %d\n", (int)DIM_I, (int)DIM_J, (int)DIM_K);
+    printf("Stride A: %d, Stride B: %d, Stride C: %d, Stride D: %d\n", (int)stride_A, (int)stride_B, (int)stride_C, (int)stride_D);
+    printf("Scale A: %f, Scale B: %f, Scale D: %d\n\n", A_scale_factor, B_scale_factor, D_scale_factor);
+
   const int no_bias = D == NULL;
   if (act != LAYERNORM && act != SOFTMAX && !transA && !transB && DIM_I % 4 == 0 && DIM_J % 4 == 0) {
     for (size_t i = 0; i < DIM_I; i += 4) {
@@ -586,8 +591,19 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
 
 #undef GEMMINI_SCALE
 
+static void matmul_ticsat(bool transA, bool transB, size_t DIM_I, size_t DIM_J, size_t DIM_K,
+                       const elem_t* A, const elem_t* B, const acc_t * D,
+                       elem_t* C,
+                       size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
+                       scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
+                       int act, acc_scale_t scale, acc_scale_t bert_scale, bool repeating_bias) {
+
+    tiledL1Compute(DIM_I, A, C, B, DIM_K, DIM_J, scale, bert_scale);
+
+}
+
 // General matmul which can be run with different dataflows, or on the CPU
-enum tiled_matmul_type_t {OS, WS, CPU}; // TODO rename this so it's name also applies to convs
+enum tiled_matmul_type_t {OS, WS, CPU, TIC}; // TODO rename this so it's name also applies to convs
 
 // This function runs a tiled matrix mulctiplication, with hardcoded tiling
 // factors
@@ -632,11 +648,10 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
     exit(1);
   }
 
-  const bool double_buffered = tiled_matmul_type == WS;
+  const bool double_buffered = false;
 
-  const size_t total_spad_size = double_buffered ? BANK_NUM * BANK_ROWS / 2 :
-      BANK_NUM * BANK_ROWS;
-  const size_t total_acc_size = double_buffered ? ACC_ROWS / 2 : ACC_ROWS;
+  const size_t total_spad_size = BANK_NUM * BANK_ROWS;
+  const size_t total_acc_size = ACC_ROWS;
 
   const size_t total_spad_rows =
       (tile_I * tile_K * DIM) +   // Rows to store A
@@ -687,7 +702,7 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
 
   // Run a tiled matrix multiplication on either Gemmini or the CPU
 
-    matmul_cpu(transpose_A, transpose_B, dim_I, dim_J, dim_K,
+    matmul_ticsat(transpose_A, transpose_B, dim_I, dim_J, dim_K,
             A, B, (const acc_t*) D, (elem_t*)C,
             stride_A, stride_B, stride_D, stride_C,
             A_scale_factor, B_scale_factor, D_scale_factor,
@@ -735,11 +750,10 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
     const size_t dim_K_padded = (dim_K / DIM + (dim_K % DIM != 0)) * DIM;
 
-    const bool double_buffered = tiled_matmul_type == WS;
+    const bool double_buffered = 0;
 
-    const size_t max_spad_rows = double_buffered ? BANK_NUM * BANK_ROWS / 2 :
-      BANK_NUM * BANK_ROWS;
-    const size_t max_acc_rows = double_buffered ? ACC_ROWS / 2 : ACC_ROWS;
+    const size_t max_spad_rows = BANK_NUM * BANK_ROWS;
+    const size_t max_acc_rows = ACC_ROWS;
 
     size_t tile_I, tile_J, tile_K;
 
@@ -747,10 +761,6 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
        tile_I = 1;
        tile_J = dim_J_padded/DIM;
        tile_K = 1;
-    } else if (double_buffered) {
-       tile_I = dim_I_padded/DIM < db_max_tile_i_j ? dim_I_padded/DIM : db_max_tile_i_j;
-       tile_J = dim_J_padded/DIM < db_max_tile_i_j ? dim_J_padded/DIM : db_max_tile_i_j;
-       tile_K = dim_K_padded/DIM < db_max_tile_k ? dim_K_padded/DIM : db_max_tile_k;
     } else {
        tile_I = dim_I_padded/DIM < max_tile_i_j ? dim_I_padded/DIM : max_tile_i_j;
        tile_J = dim_J_padded/DIM < max_tile_i_j ? dim_J_padded/DIM : max_tile_i_j;

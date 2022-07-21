@@ -5,6 +5,7 @@
 #include "stdint.h"
 #include "stdio.h"
 #include "smm_gem.h"
+#include "gemmini.h"
 #include "math.h"
 
 #define W_DATA 1
@@ -305,7 +306,7 @@ void tiledCompute(size_t seq_len, const uint32_t *input, uint32_t *output, uint3
 
 
 void tiledL1Compute(size_t seq_len, const int8_t *input, int8_t *output, int8_t *weight,
-                    size_t input_size_, size_t output_size_) {
+                    size_t input_size_, size_t output_size_, acc_scale_t scale, acc_scale_t bert_scale) {
     int ROWS_IN_BLOCK = min(128, (int) (seq_len));
     int COLS_IN_BLOCK = min(32, (int) (input_size_));
     int ratio = 32 / COLS_IN_BLOCK;
@@ -341,7 +342,7 @@ void tiledL1Compute(size_t seq_len, const int8_t *input, int8_t *output, int8_t 
                                             *(weight_ptr + k * output_size_ + j);
                                     // a bias is added because of the endianness
                                 }
-                                *(output_ptr + j) = (int8_t) ((*(output_ptr + j)) + sum);
+                                *(output_ptr + j) = scale_and_sat((*(output_ptr + j)) + sum, NO_ACTIVATION,scale, bert_scale);
                             }
                 }
             }
