@@ -4,7 +4,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/bert_gemmini.h"
 
 // Note: For self-attention, "enc_out" should be the same as "input".
 // Note: "compression_factor" should be 1 for most use cases.
@@ -255,11 +255,21 @@ uint64_t encoder_decoder(
 
 int main (int argc, char * argv[]) {
 
+    PRINT_ENCODER_DECODER("bert-tiny", /*is_encoder=*/true,
+                          /*hidden_dim=*/128, /*expansion_dim=*/512, /*num_heads=*/2, /*cross_num_heads=*/2, /*seq_len=*/512, /*compression_factor=*/1);
+
+    PRINT_ENCODER_DECODER("bert-mini", /*is_encoder=*/true,
+                          /*hidden_dim=*/256, /*expansion_dim=*/1024, /*num_heads=*/4, /*cross_num_heads=*/4, /*seq_len=*/512, /*compression_factor=*/1);
+
+    PRINT_ENCODER_DECODER("bert-medium", /*is_encoder=*/true,
+                          /*hidden_dim=*/512, /*expansion_dim=*/2048, /*num_heads=*/8, /*cross_num_heads=*/8, /*seq_len=*/512, /*compression_factor=*/1);
+
+
 //    PRINT_ENCODER_DECODER("transformer-small", /*is_encoder=*/true,
-//            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/4, /*cross_num_heads=*/4, /*seq_len=*/128, /*compression_factor=*/1);
+//            /*hidden_dim=*/128, /*expansion_dim=*/512, /*num_heads=*/2, /*cross_num_heads=*/2, /*seq_len=*/2, /*compression_factor=*/1);
 //
-    PRINT_ENCODER_DECODER("bert-base", /*is_encoder=*/true,
-            /*hidden_dim=*/768, /*expansion_dim=*/3072, /*num_heads=*/12, /*cross_num_heads=*/12, /*seq_len=*/512, /*compression_factor=*/1);
+//    PRINT_ENCODER_DECODER("bert-base", /*is_encoder=*/true,
+//            /*hidden_dim=*/768, /*expansion_dim=*/3072, /*num_heads=*/12, /*cross_num_heads=*/12, /*seq_len=*/512, /*compression_factor=*/1);
 
 //    PRINT_ENCODER_DECODER("bert-large", /*is_encoder=*/true,
 //                          /*hidden_dim=*/1024, /*expansion_dim=*/4096, /*num_heads=*/16, /*cross_num_heads=*/16, /*seq_len=*/512, /*compression_factor=*/1);

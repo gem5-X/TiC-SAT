@@ -12,8 +12,7 @@
 #include <limits.h>
 #include <stdbool.h>
 
-#include "gemmini_params.h"
-#include "smm_gem.h"
+#include "bert_gemmini_params.h"
 
 #define GEMMINI_ASSERTIONS
 
@@ -165,6 +164,16 @@ static scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
     return un.b;
 }
 #endif
+
+#define W_DATA 1
+#define MAX_COL 4
+#define KERNEL_DIM 16
+#define mem2d(data, data_len, row, col)   data[((row)*(data_len))+(col)]
+
+ #define min(a,b) \
+ ({ __typeof__ (a) _a = (a); \
+ __typeof__ (b) _b = (b); \
+ _a > _b ? _b : _a; })
 
 static acc_scale_t acc_scale_t_bits_to_acc_scale_t(acc_scale_t_bits x) {
     union {
@@ -588,6 +597,54 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
     }
   }
 }
+
+
+
+void tiledL1Compute(size_t seq_len, const int8_t *restrict input, int8_t *restrict output, int8_t *restrict weight,
+                    size_t input_size_, size_t output_size_, acc_scale_t scale, acc_scale_t bert_scale) {
+    int ROWS_IN_BLOCK = min(128, (int) (seq_len));
+    int COLS_IN_BLOCK = min(32, (int) (input_size_));
+    int ratio = 32 / COLS_IN_BLOCK;
+    int W_COL_BLOCKS = min(32 * ratio, (int) (output_size_));
+
+    int ROWS_IN_L2 = (int) (seq_len / ROWS_IN_BLOCK);
+    int COLS_IN_L2 = (int) (input_size_ / COLS_IN_BLOCK);
+    int W_COL_IN_L2 = (int) (output_size_ / W_COL_BLOCKS);
+
+    for (int l2_row_idx = 0; l2_row_idx < ROWS_IN_L2; l2_row_idx++) {
+        for (int l2_col_idx = 0; l2_col_idx < COLS_IN_L2; l2_col_idx++) {
+            for (int l2_w_idx = 0; l2_w_idx < W_COL_IN_L2; l2_w_idx++) {
+                for (int i = 0; i < ROWS_IN_BLOCK; i++) {
+                    int8_t *input_ptr = (int8_t *) (input +
+                            ((l2_row_idx * ROWS_IN_BLOCK + i) * input_size_ / W_DATA) +
+                            // index of the input row
+                            (l2_col_idx) * COLS_IN_BLOCK /
+                            W_DATA);   // block index
+                            int8_t *output_ptr = (int8_t *) (output +
+                                    (((l2_row_idx) *
+                                    ROWS_IN_BLOCK + i) * output_size_ / W_DATA) +
+                                    (l2_w_idx) * W_COL_BLOCKS /
+                                    W_DATA);
+                            int8_t *weight_ptr = (int8_t *) (weight +
+                                    (l2_col_idx) * COLS_IN_BLOCK *
+                                    output_size_ / W_DATA +
+                                    (l2_w_idx) * W_COL_BLOCKS /
+                                    W_DATA);
+                            for (int j = 0; j < W_COL_BLOCKS; j++) {
+                                int sum = 0;
+                                for (int k = 0; k < COLS_IN_BLOCK; k++) {
+                                    sum += *(input_ptr + k) *
+                                            *(weight_ptr + k * output_size_ + j);
+                                    // a bias is added because of the endianness
+                                }
+                                *(output_ptr + j) = scale_and_sat((*(output_ptr + j)) + sum, NO_ACTIVATION,scale, bert_scale);
+                            }
+                }
+            }
+        }
+    }
+}
+
 
 #undef GEMMINI_SCALE
 
