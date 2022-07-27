@@ -6,6 +6,11 @@
 #endif
 #include "include/bert_gemmini.h"
 
+#define SEQ_LEN 512
+#define HIDDEN_DIM 128
+#define EXPANSION_DIM 512
+#define NUM_HEADS 2
+
 // Note: For self-attention, "enc_out" should be the same as "input".
 // Note: "compression_factor" should be 1 for most use cases.
 void attention(int hidden_dim, int expansion_dim, int num_heads, int seq_len,
@@ -173,10 +178,7 @@ void ffn(int hidden_dim, int expansion_dim, int seq_len,
 // Note: If "enc_out == NULL", then this will act as an encoder layer.
 //   Otherwise, it will act as a decoder layer. If this is an encoder layer,
 //   then "cross_num_heads" and all the "W*_cross" args are ignored.
-uint64_t encoder_decoder(
-        int hidden_dim, int expansion_dim, int num_heads, int cross_num_heads,
-        int seq_len, int compression_factor,
-
+uint64_t encoder_decoder( int compression_factor,
         const elem_t * input, const elem_t * enc_out, elem_t * out,
         const elem_t * Wq, const elem_t * Wk, const elem_t * Wv, const elem_t * Wo,
         const elem_t * Wq_cross, const elem_t * Wk_cross, const elem_t * Wv_cross, const elem_t * Wo_cross,
@@ -189,7 +191,7 @@ uint64_t encoder_decoder(
 {
     const bool is_encoder = enc_out == NULL;
     system("m5 resetstats");
-    attention(hidden_dim, expansion_dim, num_heads, seq_len, compression_factor,
+    attention(HIDDEN_DIM, EXPANSION_DIM, NUM_HEADS, SEQ_LEN, compression_factor,
         input, input,
         out, resadd1_buf,
         Wq, Wk, Wv, Wo,
@@ -198,7 +200,7 @@ uint64_t encoder_decoder(
 
     system("m5 dumpresetstats");
 
-    ffn(hidden_dim, expansion_dim, seq_len,
+    ffn(HIDDEN_DIM, EXPANSION_DIM, SEQ_LEN,
         is_encoder ? resadd1_buf : resadd2_buf,
         out,
         ff1_w, ff2_w,
@@ -209,60 +211,81 @@ uint64_t encoder_decoder(
     return 0;
 }
 
-#define ENCODER_DECODER(hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len, compression_factor, input, enc_out, output) ({ \
-    static const elem_t Wqkvo[4][hidden_dim][hidden_dim]; \
-    static const elem_t Wqkvo_cross[4][hidden_dim][hidden_dim]; \
-    static const elem_t ff_w[2][hidden_dim*expansion_dim]; \
-    static const acc_t ff1_b[expansion_dim]; \
-    static const acc_t ff2_b[hidden_dim]; \
-    \
-    static elem_t QKV_buf[3][seq_len][hidden_dim];\
-    static elem_t attn_buf[num_heads][seq_len][seq_len];\
-    static elem_t out_buf[seq_len][expansion_dim];\
-    static elem_t resadd1_buf[seq_len][hidden_dim];\
-    static elem_t resadd2_buf[seq_len][hidden_dim];\
-    \
-    uint64_t cycles = encoder_decoder( \
-            hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len, \
-            compression_factor, \
-            \
-            input, enc_out, output, \
-            Wqkvo[0], Wqkvo[1], Wqkvo[2], Wqkvo[3],\
-            Wqkvo_cross[0], Wqkvo_cross[1], Wqkvo_cross[2], Wqkvo_cross[3],\
-            ff_w[0], ff_w[1], \
-            ff1_b, ff2_b, \
-            \
-            QKV_buf[0], QKV_buf[1], QKV_buf[2], \
-            attn_buf, out_buf, \
-            resadd1_buf, resadd2_buf \
-    ); \
-    \
-    cycles; \
-})
 
-#define PRINT_ENCODER_DECODER(name, is_encoder, hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len, compression_factor) { \
-    static const elem_t input[seq_len][hidden_dim]; \
-    static const elem_t enc_out[seq_len][hidden_dim]; \
-    static elem_t output[seq_len][hidden_dim]; \
-    \
-    char * type_str = "encoder"; \
-    uint64_t cycles = ENCODER_DECODER(hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len, compression_factor, input, NULL, output); \
-    \
-    printf("%s stats: %s, hidden_dim=%d, expansion_dim=%d, num_heads=%d, cross_num_heads=%d, seq_len=%d, compression_factor=%d\n", \
-            name, type_str, hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len, compression_factor); \
-    printf("%s cycles: %llu\n\n", name, cycles); \
+void fill_kernel(elem_t * kernel, int kernel_size){
+    for(int i=0; i<kernel_size; i++)
+        kernel[i]=(elem_t)(rand() % 5  - 2);
 }
+
 
 int main (int argc, char * argv[]) {
 
-    PRINT_ENCODER_DECODER("bert-tiny", /*is_encoder=*/true,
-                          /*hidden_dim=*/128, /*expansion_dim=*/512, /*num_heads=*/2, /*cross_num_heads=*/2, /*seq_len=*/512, /*compression_factor=*/1);
+    elem_t input[SEQ_LEN*HIDDEN_DIM];
+    fill_kernel(input, SEQ_LEN*HIDDEN_DIM);
 
-    PRINT_ENCODER_DECODER("bert-mini", /*is_encoder=*/true,
-                          /*hidden_dim=*/256, /*expansion_dim=*/1024, /*num_heads=*/4, /*cross_num_heads=*/4, /*seq_len=*/512, /*compression_factor=*/1);
+    elem_t enc_out[SEQ_LEN*HIDDEN_DIM];
+    fill_kernel(enc_out, SEQ_LEN*HIDDEN_DIM);
 
-    PRINT_ENCODER_DECODER("bert-medium", /*is_encoder=*/true,
-                          /*hidden_dim=*/512, /*expansion_dim=*/2048, /*num_heads=*/8, /*cross_num_heads=*/8, /*seq_len=*/512, /*compression_factor=*/1);
+    elem_t output[SEQ_LEN*HIDDEN_DIM];
+    fill_kernel(output, SEQ_LEN*HIDDEN_DIM);
+
+    elem_t Wqkvo[4][HIDDEN_DIM*HIDDEN_DIM];
+    for (int i=0; i<4; i++)
+        fill_kernel(Wqkvo[i], HIDDEN_DIM*HIDDEN_DIM);
+
+    elem_t Wqkvo_cross[4][HIDDEN_DIM*HIDDEN_DIM];
+    for (int i=0; i<4; i++)
+        fill_kernel(Wqkvo_cross[i], HIDDEN_DIM*HIDDEN_DIM);
+
+    elem_t ff_w[2][HIDDEN_DIM*EXPANSION_DIM];
+    fill_kernel(ff_w[0], 2*HIDDEN_DIM *EXPANSION_DIM);
+    fill_kernel(ff_w[1], 2*HIDDEN_DIM *EXPANSION_DIM);
+
+    acc_t ff1_b[EXPANSION_DIM];
+    acc_t ff2_b[HIDDEN_DIM];
+
+    elem_t QKV_buf[3][SEQ_LEN*HIDDEN_DIM];
+    for (int i=0; i<3; i++)
+        fill_kernel(QKV_buf[i], SEQ_LEN*HIDDEN_DIM);
+
+    elem_t attn_buf[NUM_HEADS*SEQ_LEN*SEQ_LEN];
+    fill_kernel(attn_buf, NUM_HEADS*SEQ_LEN*SEQ_LEN);
+
+    elem_t out_buf[SEQ_LEN*EXPANSION_DIM];
+    fill_kernel(out_buf, SEQ_LEN*EXPANSION_DIM);
+
+    elem_t resadd1_buf[SEQ_LEN*HIDDEN_DIM];
+    fill_kernel(resadd1_buf, SEQ_LEN*HIDDEN_DIM);
+
+    elem_t resadd2_buf[SEQ_LEN*HIDDEN_DIM];
+    fill_kernel(resadd2_buf, SEQ_LEN *HIDDEN_DIM);
+
+
+    uint64_t cycles = encoder_decoder(
+            1,
+            input, enc_out, output,
+            Wqkvo[0], Wqkvo[1], Wqkvo[2], Wqkvo[3],
+            Wqkvo_cross[0], Wqkvo_cross[1], Wqkvo_cross[2], Wqkvo_cross[3],
+            ff_w[0], ff_w[1],
+            ff1_b, ff2_b,
+
+            QKV_buf[0], QKV_buf[1], QKV_buf[2],
+            attn_buf, out_buf,
+            resadd1_buf, resadd2_buf
+    );
+
+    printf("%s stats: %s, hidden_dim=%d, expansion_dim=%d, num_heads=%d, cross_num_heads=%d, seq_len=%d, compression_factor=%d\n",
+           "bert-tiny", "encoder", HIDDEN_DIM, EXPANSION_DIM, NUM_HEADS, NUM_HEADS, SEQ_LEN, 1);
+    printf("cycles: %lu\n\n",  cycles);
+//
+//    PRINT_ENCODER_DECODER("bert-tiny", /*is_encoder=*/true,
+//                          /*hidden_dim=*/128, /*expansion_dim=*/512, /*num_heads=*/2, /*cross_num_heads=*/2, /*seq_len=*/512, /*compression_factor=*/1);
+//
+//    PRINT_ENCODER_DECODER("bert-mini", /*is_encoder=*/true,
+//                          /*hidden_dim=*/256, /*expansion_dim=*/1024, /*num_heads=*/4, /*cross_num_heads=*/4, /*seq_len=*/512, /*compression_factor=*/1);
+//
+//    PRINT_ENCODER_DECODER("bert-medium", /*is_encoder=*/true,
+//                          /*hidden_dim=*/512, /*expansion_dim=*/2048, /*num_heads=*/8, /*cross_num_heads=*/8, /*seq_len=*/512, /*compression_factor=*/1);
 
 
 //    PRINT_ENCODER_DECODER("transformer-small", /*is_encoder=*/true,
