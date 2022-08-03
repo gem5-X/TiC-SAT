@@ -6,14 +6,13 @@
 #include <iostream>
 #include "../kernels/systolic_m2m.h"
 #include "../gem5x_codes/smm_gem.h"
-#include "../kernels/matMulSystolic.h"
 #include <ctime>
 
 int main() {
     uint32_t outputArray[Nx * Pw / W_DATA] = {0};
     clock_t tStart, tEnd;
     tStart = clock();
-    MatMulSystolic::compute(Nx, inputArray, outputArray, weights, M, Pw);
+    simdCompute(Nx, inputArray, outputArray, weights, M, Pw);
     tEnd = clock();
     std::cout << "Time: " << (double)(tEnd - tStart) / CLOCKS_PER_SEC << std::endl;
 
