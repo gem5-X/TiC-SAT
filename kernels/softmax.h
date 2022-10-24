@@ -16,6 +16,7 @@ class Softmax
         explicit Softmax();
         ~Softmax();
         void compute(uint32_t *input, std::size_t seq_len);
+        void post_softmax(uint32_t *input, size_t seq_len);
     private:
 
 };
