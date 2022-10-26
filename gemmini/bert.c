@@ -7,9 +7,9 @@
 #include "include/bert_gemmini.h"
 
 #define SEQ_LEN 512
-#define HIDDEN_DIM 128
-#define EXPANSION_DIM 512
-#define NUM_HEADS 2
+#define HIDDEN_DIM 1024
+#define EXPANSION_DIM 4096
+#define NUM_HEADS 16
 
 // Note: For self-attention, "enc_out" should be the same as "input".
 // Note: "compression_factor" should be 1 for most use cases.
@@ -217,47 +217,47 @@ void fill_kernel(elem_t * kernel, int kernel_size){
         kernel[i]=(elem_t)(rand() % 5  - 2);
 }
 
+elem_t input[SEQ_LEN*HIDDEN_DIM];
+elem_t enc_out[SEQ_LEN*HIDDEN_DIM];
+elem_t output[SEQ_LEN*HIDDEN_DIM];
+elem_t Wqkvo[4][HIDDEN_DIM*HIDDEN_DIM];
+elem_t Wqkvo_cross[4][HIDDEN_DIM*HIDDEN_DIM];
+elem_t ff_w[2][HIDDEN_DIM*EXPANSION_DIM];
+acc_t ff1_b[EXPANSION_DIM];
+acc_t ff2_b[HIDDEN_DIM];
+elem_t QKV_buf[3][SEQ_LEN*HIDDEN_DIM];
+elem_t attn_buf[NUM_HEADS*SEQ_LEN*SEQ_LEN];
+elem_t out_buf[SEQ_LEN*EXPANSION_DIM];
+elem_t resadd1_buf[SEQ_LEN*HIDDEN_DIM];
+elem_t resadd2_buf[SEQ_LEN*HIDDEN_DIM];
+
 
 int main (int argc, char * argv[]) {
 
-    elem_t input[SEQ_LEN*HIDDEN_DIM];
     fill_kernel(input, SEQ_LEN*HIDDEN_DIM);
 
-    elem_t enc_out[SEQ_LEN*HIDDEN_DIM];
     fill_kernel(enc_out, SEQ_LEN*HIDDEN_DIM);
 
-    elem_t output[SEQ_LEN*HIDDEN_DIM];
     fill_kernel(output, SEQ_LEN*HIDDEN_DIM);
 
-    elem_t Wqkvo[4][HIDDEN_DIM*HIDDEN_DIM];
     for (int i=0; i<4; i++)
         fill_kernel(Wqkvo[i], HIDDEN_DIM*HIDDEN_DIM);
 
-    elem_t Wqkvo_cross[4][HIDDEN_DIM*HIDDEN_DIM];
     for (int i=0; i<4; i++)
         fill_kernel(Wqkvo_cross[i], HIDDEN_DIM*HIDDEN_DIM);
 
-    elem_t ff_w[2][HIDDEN_DIM*EXPANSION_DIM];
     fill_kernel(ff_w[0], 2*HIDDEN_DIM *EXPANSION_DIM);
     fill_kernel(ff_w[1], 2*HIDDEN_DIM *EXPANSION_DIM);
 
-    acc_t ff1_b[EXPANSION_DIM];
-    acc_t ff2_b[HIDDEN_DIM];
-
-    elem_t QKV_buf[3][SEQ_LEN*HIDDEN_DIM];
     for (int i=0; i<3; i++)
         fill_kernel(QKV_buf[i], SEQ_LEN*HIDDEN_DIM);
 
-    elem_t attn_buf[NUM_HEADS*SEQ_LEN*SEQ_LEN];
     fill_kernel(attn_buf, NUM_HEADS*SEQ_LEN*SEQ_LEN);
 
-    elem_t out_buf[SEQ_LEN*EXPANSION_DIM];
     fill_kernel(out_buf, SEQ_LEN*EXPANSION_DIM);
 
-    elem_t resadd1_buf[SEQ_LEN*HIDDEN_DIM];
     fill_kernel(resadd1_buf, SEQ_LEN*HIDDEN_DIM);
 
-    elem_t resadd2_buf[SEQ_LEN*HIDDEN_DIM];
     fill_kernel(resadd2_buf, SEQ_LEN *HIDDEN_DIM);
 
 
