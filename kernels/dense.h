@@ -5,7 +5,7 @@
 // #include <unordered_map>
 // #include <string>
 #include "util.h"
-#include "../gem5x_codes/smm_gem.h"
+#include "../accelerator/smm_gem.h"
 
 class Dense {
 public:

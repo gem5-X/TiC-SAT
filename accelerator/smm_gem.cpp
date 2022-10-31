@@ -13,7 +13,7 @@
 #define mem2d(data, data_len, row, col)   data[((row)*(data_len))+(col)]
 
 #define DEVELOP
-#define ARM_PROCESSOR
+//#define ARM_PROCESSOR
 
 #ifndef DEVELOP
 
