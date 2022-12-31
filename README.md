@@ -4,16 +4,16 @@ TiC-SAT is an architecture and framework for tightly-coupled systolic arrays dev
 It is a  model for systolic array acceleration in the gem5-X full system simulator, and defined its interface with custom extensions to the ARMv8 instruction set. 
 
 ## Installing gem5-x
-You can follow Section 2 of [this documnet](https://www.epfl.ch/labs/esl/wp-content/uploads/2021/08/gem5_X_TechnicalManual_v2.pdf) for installing gem5-x.
+You can follow Section 2 of [this documnet](gem5_X_TechnicalManual_TiCSAT.pdf) for installing gem5-x.
 
 ## Compiling a transformer code
 Since gem5-x is an arm-based simulator, the compiler should target arm-linux system. You can use the following command:
 ``` script
-arm-linux-gnueabi-g++ mat_mul.cpp -o mat_mul.o
+arm-linux-gnueabi-g++ transformer.cpp -o transformer.o
 ```
-Once you generated the output file, move it to a folder which called shared.
+Once you generated the output file, move it to a folder which is called shared.
 
-## Runing code on gem5-x
+## Runing code on gem5-X-TiC-SAT
 ```
 ./build/ARM/gem5.fast \
 --remote-gdb-port=0 \
@@ -49,19 +49,11 @@ bash mount.sh <absolute_path_to_you_shared_folder>
 Now, you can run your code on gem5-x.
 
 ## Design your own TiC-SAT
-
-### SA accelerator kernel size (k)
-You can change this parameter in the following files to have your prefered systolic array size. 
-
-**src/dev/arm/systolic_m2m.hh**
-
-For instance, if you want an SA with size 8, you can modify the following code:
-``` C++
-#define KERNEL_DIM 8
-#define MAX_COL 2
-```
-
-Don't forget to use *scons* when you modified the gem5-x kernel to compile it again with the new structure.
+You can change the following parameters in the gem5-X-TiC-SAT to customize TiC-SAT for your application:
+1. Operation latency of custom instructions
+2. Systolic array size
+3. Operation bit width
+You can follow the instruction in Section 8 of [this documnet](gem5_X_TechnicalManual_TiCSAT.pdf) for customizing the accelrator. After applying any modification in the files in gem5-X-TiC-SAT, don't forget to use *scons* to compile gem5-X-TiC-SAT again with the new structure.
 
 ## Reference
 If you have used TiC-SAT in your academic articles, we appreciate it if you cite the following paper:
@@ -70,8 +62,6 @@ If you have used TiC-SAT in your academic articles, we appreciate it if you cite
 A. Amirshahi *et al*, "TiC-SAT: Tightly-coupled Systolic Accelerator for Transformers", 
 28th Asia and South Pacific Design Automation Conference (ASPDAC '23), Tokyo, Japan, doi: 10.1145/3566097.3567867
 ```
-
-
 
 ## Acknowledgements
 This work has been supported by the EC H2020 WiPLASH (GA No. 863337) and the EC H2020 FVLLMONTI (GA No. 101016776) projects.
