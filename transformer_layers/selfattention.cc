@@ -19,15 +19,6 @@ SingleHeadSelfAttn::SingleHeadSelfAttn(std::size_t pre_seq_len, std::size_t inpu
     key_transposed_layer_out = new uint32_t[pre_seq_len * head_hidden_size >> 2];
     value_layer_out = new uint32_t[pre_seq_len * head_hidden_size >> 2];
     attention_scores = new uint32_t[pre_seq_len * pre_seq_len >> 2];
-//
-//        q_array = new const uint32_t *[pre_batch_size * num_heads];
-//        k_array = new const uint32_t *[pre_batch_size * num_heads];
-//        pointer_qk_array = new uint32_t* [pre_batch_size * num_heads];
-//
-//        sim_array = new const uint32_t *[pre_batch_size * num_heads];
-//        value_array = new const uint32_t *[pre_batch_size * num_heads];
-//        pointer_sv_array = new uint32_t *[pre_batch_size * num_heads];
-
 }
 
 SingleHeadSelfAttn::~SingleHeadSelfAttn() {

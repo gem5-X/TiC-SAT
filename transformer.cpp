@@ -1,6 +1,6 @@
-#include"kernels/transformerBlock.h"
+#include"transformer_layers/transformerBlock.h"
 //#include"gtest/gtest.h"
-#include "selfattentest.h"
+#include "transformer.h"
 
 
 void fill_kernel(uint32_t* kernel, int kernel_size){
