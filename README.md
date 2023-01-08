@@ -4,59 +4,49 @@ TiC-SAT is an architecture and framework for tightly-coupled systolic arrays dev
 It is a  model for systolic array acceleration in the gem5-X full system simulator, and defined its interface with custom extensions to the ARMv8 instruction set. 
 
 ## Installing gem5-x
-You can follow Section 2 of [this documnet](gem5_X_TechnicalManual_TiCSAT.pdf) for installing gem5-x.
+You can follow Section 2 of [this documnet](gem5_X_TechnicalManual_TiCSAT.pdf) for installing gem5-x. The installation steps are as follows. Please refer to the document for more details.
+1. Register on the [gem5-X website](http://esl.epfl.ch/gem5-x), download the *full system files*, and set up the downloaded file's path in gem5-X-TiC-SAT of this repository.
+2. Generate the device tree binary files
+3. Build an ARM gem5 binary (gem5.fast is recommended)
+4. Run your full system (FS) simulation
+
+Running the FS simulation takes several minutes. Then, you should be able to access the kernel dmesg, followed finally by a login and a terminal in the gem5-X FS mode. You can use common Linux commands in the terminal. You can exit the terminal using the following command in the connected terminal:
+``` script
+m5 exit
+```
+
+## Sharing files between gem5-x and the host systems
+Once you installed gem5-x, you can follow Section 3.3 of [this documnet](gem5_X_TechnicalManual_TiCSAT.pdf) for installing *diod* and build again the gem5-x binary. This feature enables us to mount a shared folder from the host system in the gem5-x.
 
 ## Compiling a transformer code
-Since gem5-x is an arm-based simulator, the compiler should target arm-linux system. You can use the following command:
+In this repository, you can find the code to simulate a transformer model. To complie the code, you can use compile command inside the gem5-x system; however, it is not recomended because it takes several hours. The alternative way is to compile the codeon your host system using the following command and put the compiled code in the shared folder and mount it in the gem5-x system.
 ``` script
 arm-linux-gnueabi-g++ transformer.cpp -o transformer.o
 ```
-Once you generated the output file, move it to a folder which is called shared.
-
-## Runing code on gem5-X-TiC-SAT
-```
-./build/ARM/gem5.fast \
---remote-gdb-port=0 \
--d ./output \
-./configs/example/fs.py \
---cpu-clock=1GHz \
---kernel=./full_system_images/binaries/vmlinux-5.4.0 \
---machine-type=VExpress_GEM5_V1 \
---dtb-file=./system/arm/dt/armv8_gem5_v1_8cpu.dtb \
--n 8 \
---disk-image=./full_system_images/disks/test_spm.img \
---caches \
---l2cache \
---l1i_size=32kB \
---l1d_size=32kB \
---l2_size=512kB \
---l2_assoc=2 \
---mem-type=DDR4_2400_4x16 \
---mem-ranks=4 \
---mem-size=4GB \
---sys-clock=1600MHz \
---cpu-type=MinorCPU
-```
-
-In a new terminal:
+Once you generated the output file, move transformer.o to the shared folder. Mount the folder in your gem5-x simulation.
+Now, you can run your code on gem5-x by the following command:
 ``` script
-telnet localhost 3456
+./transformer.o
 ```
-Once the ubuntu system boots, you can use the following command to mount the shared folder in your gem5-x simulation.
-```
-bash mount.sh <absolute_path_to_you_shared_folder>
-```
-Now, you can run your code on gem5-x.
 
-## Design your own TiC-SAT
+## Extract the statistics
+To extract more than 1000 timing and memory statistics from a piece of your code, you can add the following codes before and after the target code.  The stats file will be created in the output directory.
+``` C++
+system("m5 resetstats");
+// Put your code here
+system("m5 dumpresetstats");
+```
+For instance, in this repository, we extract the statistics of each layer of the transformer using the abovementioned commands in [this file](transformer_layers/transformerBlock.cc).
+
+## Advanced: Design your own TiC-SAT
 You can change the following parameters in the gem5-X-TiC-SAT to customize TiC-SAT for your application:
 1. Operation latency of custom instructions
 2. Systolic array size
 3. Operation bit width
-You can follow the instruction in Section 8 of [this documnet](gem5_X_TechnicalManual_TiCSAT.pdf) for customizing the accelrator. After applying any modification in the files in gem5-X-TiC-SAT, don't forget to use *scons* to compile gem5-X-TiC-SAT again with the new structure.
+You can follow the instruction in Section 8 of [this documnet](gem5_X_TechnicalManual_TiCSAT.pdf) for customizing the accelrator. After applying any modification in the files in gem5-X-TiC-SAT, don't forget to use *scons* to compile gem5-X-TiC-SAT binary again with the new structure (Section 2.2.2).
 
 ## Reference
-If you have used TiC-SAT in your academic articles, we appreciate it if you cite the following paper:
+If you have used TiC-SAT, we appreciate it if you cite the following paper in your academic articles:
 
 ```
 A. Amirshahi *et al*, "TiC-SAT: Tightly-coupled Systolic Accelerator for Transformers", 
