@@ -5,12 +5,9 @@ set(CMAKE_CXX_STANDARD 14)
 
 
 file(GLOB transformer_SRC
-        "kernels/*.h"
-        "kernels/*.cc"
-        "kernels/matMulSystolic.*"
-        "kernels/matMulSystolic.h"
-        "kernels/systolic_m2m.cpp"
+        "transformer_layers/*.h"
+        "transformer_layers/*.cc"
         "accelerator/smm_gem.cpp"
         )
 
-add_executable(FvllMontiTransformer selfattentest.cpp ${transformer_SRC})
+add_executable(FvllMontiTransformer transformer.cpp ${transformer_SRC})

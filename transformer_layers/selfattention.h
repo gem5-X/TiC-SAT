@@ -2,7 +2,7 @@
 
 #include "dense.h"
 #include "softmax.h"
-#include "batchgemm.h"
+#include "transpose.h"
 #include "../accelerator/smm_gem.h"
 
 class SingleHeadSelfAttn{

@@ -1,14 +1,5 @@
 #include "softmax.h"
 #include <cmath>
-#include <iostream>
-//
-//    float exp_<float>(float input){
-//        return expf(input);
-//    }
-//
-//    float sum_<float>(float sum){
-//        return sum > 1e-22f ? sum : 1e-22f;
-//    }
 
 static const  uint8_t  lookup[32] = {
         4, 5, 7, 8, 11, 14, 18, 23, 30, 38, 49, 63, 80, 103, 132, 170, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 3,
