@@ -4,7 +4,7 @@ TiC-SAT is an architecture and framework for tightly-coupled systolic arrays dev
 It is a  model for systolic array acceleration in the gem5-X full system simulator, and defined its interface with custom extensions to the ARMv8 instruction set. 
 
 ## Installing gem5-x
-You can follow Section 2 of [this documnet](gem5_X_TechnicalManual_TiCSAT.pdf) for installing gem5-x. The installation steps are as follows. Please refer to the document for more details.
+You can follow Section 2 of [this document](gem5_X_TechnicalManual_TiCSAT.pdf) for installing gem5-x. The installation steps are as follows. Please refer to the document for more details.
 1. Register on the [gem5-X website](http://esl.epfl.ch/gem5-x), download the *full system files*, and set up the downloaded file's path in gem5-X-TiC-SAT of this repository.
 2. Generate the device tree binary files
 3. Build an ARM gem5 binary (gem5.fast is recommended)
