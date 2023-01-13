@@ -44,7 +44,7 @@ You can change the following parameters in the gem5-X-TiC-SAT to customize TiC-S
 2. Systolic array size
 3. Operation bit width
 
-You can follow the instruction in Section 8 of [this documnet](gem5_X_TechnicalManual_TiCSAT.pdf) to customize the accelrator. After applying any modification in the files in gem5-X-TiC-SAT, don't forget to use *scons* to recompile the gem5-X-TiC-SAT binary with the new structure (Section 2.2.2).
+You can follow the instruction in Section 8 of [this document](gem5_X_TechnicalManual_TiCSAT.pdf) to customize the accelrator. After applying any modification in the files in gem5-X-TiC-SAT, don't forget to use *scons* to recompile the gem5-X-TiC-SAT binary with the new structure (Section 2.2.2).
 
 Please note that to change the configuration of the accelerator, you also need to modify the configuration on the software in [this file](accelerator/smm_gem.cpp). For instance, the systolic array size in this file, should be identical to the size assigned in the gem5-X-TiC-SAT.
 
