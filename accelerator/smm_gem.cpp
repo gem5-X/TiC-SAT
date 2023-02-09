@@ -119,7 +119,7 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
     int ROWS_IN_L2 = std::min(512 / ROWS_IN_BLOCK, (int) ceil((float) (seq_len) / (float) ROWS_IN_BLOCK));
     int rowMaxL2 = std::min(256, (int) (input_size_)) / KERNEL_DIM / rowMaxL1;
     int colMaxL2 = std::min(256, (int) (output_size_)) / KERNEL_DIM / colMaxL1;
-    std::cout << rowMaxL2 << "\t\t" << colMaxL2 << std::endl;
+
     for (int l2In = 0; l2In < (int) ceil((float) seq_len / (float) ROWS_IN_BLOCK / (float) ROWS_IN_L2); l2In++) {
         for (int l2Row = 0; l2Row < (input_size_ / KERNEL_DIM) / rowMaxL2 / rowMaxL1; l2Row++) {
             for (int l2Col = 0; l2Col < (output_size_ / KERNEL_DIM) / colMaxL2 / colMaxL1; l2Col++) {
@@ -137,12 +137,17 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                     int rowBlockSize = KERNEL_DIM;
                                     int colBlockSize = KERNEL_DIM / W_DATA;
                                     uint32_t *wPtr = weights + rowStart * (output_size_ / W_DATA);
+                                    bool non_zero_tile = false;
                                     for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
                                         for (int j = colStart; j < colStart + colBlockSize; j++) {
                                             uint32_t weight = *(wPtr + j);
                                             smmParamWrite(i - rowStart, j - colStart, weight);
+                                            non_zero_tile += (weight != 0x0);
                                         }
                                         wPtr += output_size_ / W_DATA;
+                                    }
+                                    if (!non_zero_tile){
+                                        continue;
                                     }
 
                                     // Process the multiplication

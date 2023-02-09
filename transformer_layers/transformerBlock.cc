@@ -62,6 +62,6 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     system("m5 dumpresetstats");
 
     std::cout << "Add Norm"  << std::endl;
-    addNorm->compute(multihead_out, output);
+//    addNorm->compute(condense_out, output);
     system("m5 dumpresetstats");
 }
