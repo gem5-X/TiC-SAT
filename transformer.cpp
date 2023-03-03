@@ -82,7 +82,7 @@ void test(int sparsity_percentage){
 }
 
 int main() {
-    for (int sparsity_level = 30; sparsity_level <= 35; sparsity_level+=5){
+    for (int sparsity_level = 0; sparsity_level <= 1; sparsity_level+=5){
         test(sparsity_level);
     }
     return 0;

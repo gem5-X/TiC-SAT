@@ -109,25 +109,28 @@ uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra) {
 }
 
 #else
+
 #include "systolic_m2m.hh"
+
 SystolicMatrixMultiplication smm = SystolicMatrixMultiplication();
+
 void smmParamWrite(int rm, int rn, uint32_t ra) {
     smm.loadWeights(rm, rn, ra);
 }
 
 uint32_t smmQueue(int rm, uint32_t ra) {
-    return smm.inputQueue(rm , ra);
+    return smm.inputQueue(rm, ra);
 }
 
-uint32_t smmStream(uint32_t rn){
+uint32_t smmStream(uint32_t rn) {
     return smm.streamInOut(rn);
 }
 
 #endif
 
 
-void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
-                std::size_t input_size_, std::size_t output_size_, bool sparse) {
+void smmComputeOriginal(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
+                        std::size_t input_size_, std::size_t output_size_, bool sparse) {
 
     int ROWS_IN_BLOCK = std::min(128, (int) (seq_len));
     int rowMaxL1 = std::min(64, (int) (input_size_)) / KERNEL_DIM;
@@ -164,7 +167,7 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                         }
                                         wPtr += output_size_ / W_DATA;
                                     }
-                                    if (!non_zero_tile && sparse){
+                                    if (!non_zero_tile && sparse) {
                                         continue;
                                     }
 
@@ -223,15 +226,89 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
 #endif
 }
 
+void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
+                std::size_t input_size_, std::size_t output_size_, bool sparse) {
+
+    for (int l2Row = 0; l2Row < input_size_ / KERNEL_DIM; l2Row++) {
+        for (int l2Col = 0; l2Col < output_size_ / KERNEL_DIM; l2Col++) {
+            // Load the kernel with the corresponding weight
+            int rowStart = l2Row * KERNEL_DIM;
+            int colStart = l2Col * KERNEL_DIM / W_DATA;
+            int rowBlockSize = KERNEL_DIM;
+            int colBlockSize = KERNEL_DIM / W_DATA;
+            uint32_t *wPtr = weights + rowStart * (output_size_ / W_DATA);
+            bool non_zero_tile = false;
+            for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
+                for (int j = colStart; j < colStart + colBlockSize; j++) {
+                    uint32_t weight = *(wPtr + j);
+                    smmParamWrite(i - rowStart, j - colStart, weight);
+                    non_zero_tile += (weight != 0x0);
+                }
+                wPtr += output_size_ / W_DATA;
+            }
+            if (!non_zero_tile && sparse) {
+                continue;
+            }
+
+            // Process the multiplication
+            int base_col_idx = l2Row * MAX_COL;
+            int outputIndex = 0;
+            uint32_t *outPtr = output;
+            uint32_t mult;
+            const uint32_t *inPtr =
+                    input + base_col_idx;
+            for (int i = 0; i < seq_len; i++) {
+                for (int j = 0; j < MAX_COL; j++) {
+                    if (j == MAX_COL - 1) {
+                        mult = smmStream(*(inPtr + j));
+                    } else {
+                        mult = smmQueue(j % MAX_COL, *(inPtr + j));
+                    }
+
+                    if ((i * MAX_COL + j) >=
+                        (MAX_COL * (2 * KERNEL_DIM - 1) -
+                         1)) {    // check if the output is valid
+                        add8in32(
+                                mem2d(outPtr, output_size_ / W_DATA, outputIndex / colBlockSize,
+                                      colStart + outputIndex % colBlockSize), mult);
+                        outputIndex++;
+                    }
+                }
+                inPtr += (input_size_ / W_DATA);
+            }
+            for (int i = seq_len * MAX_COL;
+                 i < MAX_COL * (seq_len + 2 * KERNEL_DIM - 1) - 1; i++) {
+                if ((i % MAX_COL) == MAX_COL - 1) {
+                    mult = smmStream(0);
+                } else {
+                    mult = smmQueue(i % MAX_COL, 0);
+                }
+                if (i >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) { // check if the output is valid
+                    add8in32(mem2d(outPtr, output_size_ / W_DATA, outputIndex / colBlockSize,
+                                   colStart + outputIndex % colBlockSize), mult);
+                    outputIndex++;
+                }
+            }
+        }
+    }
+
+#ifdef DEVELOP
+    print_arr(output, seq_len, output_size_);
+
+    getchar();
+
+#endif
+}
+
 void add8in32(uint32_t &memory, uint32_t &systolicResult) {
     /*
      * This function separates every 32-bit input to four 8-bit integers and add them. Then, packing again and
      * make a 32-bit  unsigned int.
      */
-    auto *mem_ptr = (int8_t *) (&memory);
-    auto *sys_ptr = (int8_t *) (&systolicResult);
+    auto *mem_ptr = (int8_t * )(&memory);
+    auto *sys_ptr = (int8_t * )(&systolicResult);
     for (int i = 0; i < W_DATA; i++) {
-        *mem_ptr = (int8_t) (*mem_ptr + *sys_ptr);
+        *mem_ptr = (int8_t)(*mem_ptr + *sys_ptr);
         mem_ptr++;
         sys_ptr++;
     }
@@ -248,11 +325,11 @@ void print_arr(uint32_t *array, int n, int p) {
         std::cout << std::hex << (uint32_t) mem2d(array, p / W_DATA, 0, j) << "\t";
     std::cout << std::endl;
     for (int j = 0; j < 4; j++)
-        std::cout << std::hex << (uint32_t) mem2d(array, p / W_DATA, n-1, j) << "\t";
+        std::cout << std::hex << (uint32_t) mem2d(array, p / W_DATA, n - 1, j) << "\t";
     std::cout << std::endl;
 
-    for (int j = p/W_DATA-2; j < p/W_DATA; j++)
-        std::cout << std::hex << (uint32_t) mem2d(array, p / W_DATA, n-1, j) << "\t";
+    for (int j = p / W_DATA - 2; j < p / W_DATA; j++)
+        std::cout << std::hex << (uint32_t) mem2d(array, p / W_DATA, n - 1, j) << "\t";
     std::cout << std::endl;
 
 }
@@ -262,10 +339,10 @@ void conventionalCompute(std::size_t seq_len, const uint32_t *input, uint32_t *o
     for (int length = 0; length < seq_len; length++) {
         for (int out_idx = 0; out_idx < (output_size_ / W_DATA); out_idx++) {
             // std::cout<< "out : " << out_idx << std::endl;
-            auto *weight_ptr = (int8_t *) (weight + out_idx);
-            auto *output_ptr = (int8_t *) (output + (length * output_size_ / W_DATA) + out_idx);
+            auto *weight_ptr = (int8_t * )(weight + out_idx);
+            auto *output_ptr = (int8_t * )(output + (length * output_size_ / W_DATA) + out_idx);
             for (int w = 0; w < W_DATA; w++) {
-                auto *input_ptr = (int8_t *) (input + (length * input_size_ / W_DATA));
+                auto *input_ptr = (int8_t * )(input + (length * input_size_ / W_DATA));
                 int sum = 0;
                 for (int i = 0; i < input_size_; i++) {
                     sum += *(weight_ptr + (i + 3 - 2 * (i % W_DATA)) * output_size_ + w) * (*(input_ptr));
@@ -295,18 +372,18 @@ void tiledCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, 
                     for (int l2_col_idx = 0; l2_col_idx < COLS_IN_L2; l2_col_idx++) {
                         for (int l2_w_idx = 0; l2_w_idx < W_COL_IN_L2; l2_w_idx++) {
                             for (int i = 0; i < ROWS_IN_BLOCK; i++) {
-                                auto *input_ptr = (int8_t *) (input +
+                                auto *input_ptr = (int8_t * )(input +
                                                               (((blk_row_idx * ROWS_IN_L2 + l2_row_idx) *
                                                                 ROWS_IN_BLOCK + i) * input_size_ / W_DATA) +
                                                               // index of the input row
                                                               (blk_col_idx * COLS_IN_L2 + l2_col_idx) * COLS_IN_BLOCK /
                                                               W_DATA);   // block index
-                                auto *output_ptr = (int8_t *) (output +
+                                auto *output_ptr = (int8_t * )(output +
                                                                (((blk_row_idx * ROWS_IN_L2 + l2_row_idx) *
                                                                  ROWS_IN_BLOCK + i) * output_size_ / W_DATA) +
                                                                (w_blk_col_idx * W_COL_IN_L2 + l2_w_idx) * W_COL_BLOCKS /
                                                                W_DATA);
-                                auto *weight_ptr = (int8_t *) (weight +
+                                auto *weight_ptr = (int8_t * )(weight +
                                                                (blk_col_idx * COLS_IN_L2 + l2_col_idx) * COLS_IN_BLOCK *
                                                                output_size_ / W_DATA +
                                                                (w_blk_col_idx * W_COL_IN_L2 + l2_w_idx) * W_COL_BLOCKS /
@@ -318,7 +395,7 @@ void tiledCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, 
                                                *(weight_ptr + (k + 3 - 2 * (k % W_DATA)) * output_size_ + j);
                                         // a bias is added because of the endianness
                                     }
-                                    *(output_ptr + j) = (int8_t) ((*(output_ptr + j)) + sum);
+                                    *(output_ptr + j) = (int8_t)((*(output_ptr + j)) + sum);
                                 }
                             }
                         }
@@ -345,17 +422,17 @@ void tiledL1Compute(std::size_t seq_len, const uint32_t *input, uint32_t *output
         for (int l2_col_idx = 0; l2_col_idx < COLS_IN_L2; l2_col_idx++) {
             for (int l2_w_idx = 0; l2_w_idx < W_COL_IN_L2; l2_w_idx++) {
                 for (int i = 0; i < ROWS_IN_BLOCK; i++) {
-                    auto *input_ptr = (int8_t *) (input +
+                    auto *input_ptr = (int8_t * )(input +
                                                   ((l2_row_idx * ROWS_IN_BLOCK + i) * input_size_ / W_DATA) +
                                                   // index of the input row
                                                   (l2_col_idx) * COLS_IN_BLOCK /
                                                   W_DATA);   // block index
-                    auto *output_ptr = (int8_t *) (output +
+                    auto *output_ptr = (int8_t * )(output +
                                                    (((l2_row_idx) *
                                                      ROWS_IN_BLOCK + i) * output_size_ / W_DATA) +
                                                    (l2_w_idx) * W_COL_BLOCKS /
                                                    W_DATA);
-                    auto *weight_ptr = (int8_t *) (weight +
+                    auto *weight_ptr = (int8_t * )(weight +
                                                    (l2_col_idx) * COLS_IN_BLOCK *
                                                    output_size_ / W_DATA +
                                                    (l2_w_idx) * W_COL_BLOCKS /
@@ -367,7 +444,7 @@ void tiledL1Compute(std::size_t seq_len, const uint32_t *input, uint32_t *output
                                    *(weight_ptr + (k + 3 - 2 * (k % W_DATA)) * output_size_ + j);
                             // a bias is added because of the endianness
                         }
-                        *(output_ptr + j) = (int8_t) ((*(output_ptr + j)) + sum);
+                        *(output_ptr + j) = (int8_t)((*(output_ptr + j)) + sum);
                     }
                 }
             }
