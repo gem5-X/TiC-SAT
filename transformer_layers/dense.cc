@@ -19,7 +19,7 @@ Dense::~Dense() {
 }
 
 void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *output) {
-    smmCompute(seq_len, input, output, weight, input_size_, output_size_);
+    smmCompute(seq_len, input, output, weight, input_size_, output_size_, true);
 }
 
 void Dense::addbias(std::size_t seq_len, uint32_t *output) {

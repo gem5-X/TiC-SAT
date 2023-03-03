@@ -8,6 +8,7 @@ file(GLOB transformer_SRC
         "transformer_layers/*.h"
         "transformer_layers/*.cc"
         "accelerator/smm_gem.cpp"
+        "accelerator/systolic_m2m.cc"
         )
 
 add_executable(FvllMontiTransformer transformer.cpp ${transformer_SRC})

@@ -12,11 +12,12 @@
 #define KERNEL_DIM 8
 #define mem2d(data, data_len, row, col)   data[((row)*(data_len))+(col)]
 
-//#define DEVELOP
-
-#ifndef DEVELOP
 
 void add8in32(uint32_t &memory, uint32_t &systolicResult);
+
+#define DEVELOP
+
+#ifndef DEVELOP
 
 /* CM Core Process (MVM)
 * Instruction format: |____Opcode___|__rm__|_X|__ra__|__rn__|__rd__|
@@ -107,9 +108,26 @@ uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra) {
 
 }
 
+#else
+#include "systolic_m2m.hh"
+SystolicMatrixMultiplication smm = SystolicMatrixMultiplication();
+void smmParamWrite(int rm, int rn, uint32_t ra) {
+    smm.loadWeights(rm, rn, ra);
+}
+
+uint32_t smmQueue(int rm, uint32_t ra) {
+    return smm.inputQueue(rm , ra);
+}
+
+uint32_t smmStream(uint32_t rn){
+    return smm.streamInOut(rn);
+}
+
+#endif
+
 
 void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
-                std::size_t input_size_, std::size_t output_size_) {
+                std::size_t input_size_, std::size_t output_size_, bool sparse) {
 
     int ROWS_IN_BLOCK = std::min(128, (int) (seq_len));
     int rowMaxL1 = std::min(64, (int) (input_size_)) / KERNEL_DIM;
@@ -146,7 +164,7 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                         }
                                         wPtr += output_size_ / W_DATA;
                                     }
-                                    if (!non_zero_tile){
+                                    if (!non_zero_tile && sparse){
                                         continue;
                                     }
 
@@ -199,6 +217,10 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
             }
         }
     }
+#ifdef DEVELOP
+    print_arr(output, seq_len, output_size_);
+    getchar();
+#endif
 }
 
 void add8in32(uint32_t &memory, uint32_t &systolicResult) {
@@ -222,9 +244,18 @@ void print_arr(uint32_t *array, int n, int p) {
         std::cout << std::endl;
     }
     std::cout << std::endl;
-}
+    for (int j = 0; j < 4; j++)
+        std::cout << std::hex << (uint32_t) mem2d(array, p / W_DATA, 0, j) << "\t";
+    std::cout << std::endl;
+    for (int j = 0; j < 4; j++)
+        std::cout << std::hex << (uint32_t) mem2d(array, p / W_DATA, n-1, j) << "\t";
+    std::cout << std::endl;
 
-#endif
+    for (int j = p/W_DATA-2; j < p/W_DATA; j++)
+        std::cout << std::hex << (uint32_t) mem2d(array, p / W_DATA, n-1, j) << "\t";
+    std::cout << std::endl;
+
+}
 
 void conventionalCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weight,
                          std::size_t input_size_, std::size_t output_size_) {
