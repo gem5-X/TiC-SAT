@@ -6,9 +6,9 @@
 #define FVLLMONTITRANSFORMER_TRANSFORMER_H
 
 #define D_Q 64
-#define D_SEQ 998
-#define D_MODEL 256
-#define NUM_HEAD 4
-#define D_FF 2048
+#define D_SEQ 512
+#define D_MODEL 1024
+#define NUM_HEAD 16
+#define D_FF 4096
 
 #endif //FVLLMONTITRANSFORMER_TRANSFORMER_H

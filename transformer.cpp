@@ -20,13 +20,14 @@ void fill_sparse_weight(uint32_t* kernel, int n_row, int n_col, int sparsity){
     for (int i=0; i<n_row/KERNEL_DIM; i++){
         for (int j=0; j<n_col/MAX_COL; j++){
             if (rand() % 100 >= sparsity){
+                int tile_index = (i * (n_col/MAX_COL) + j) * KERNEL_DIM * MAX_COL;
                 for (int ii=0; ii<KERNEL_DIM; ii++){
                     for (int jj=0; jj<MAX_COL; jj++){
                         uint32_t result = 0;
                         for (int k=0; k<4; k++){
                             result |=  ((uint8_t)(rand() % 5  - 2)) << (8 * k);
                         }
-                        kernel[(i*KERNEL_DIM+ii)*n_col + (j*MAX_COL + jj)]=result;
+                        kernel[tile_index + ii * MAX_COL + jj]=result;
                     }
                 }
             }
@@ -54,6 +55,7 @@ void test(int sparsity_percentage){
     for (int n=0; n<NUM_HEAD; n++){
         auto query_kernel = new uint32_t [D_Q* D_MODEL >> 2]();
         fill_sparse_weight(query_kernel, D_MODEL, D_Q >> 2, sparsity_percentage);
+//        print_weight(query_kernel, (D_MODEL * D_Q >> 2) / (KERNEL_DIM* MAX_COL), KERNEL_DIM *MAX_COL);
         weightVec[n*3] = query_kernel;
 
         auto key_kernel = new uint32_t [ D_Q* D_MODEL >> 2]();
