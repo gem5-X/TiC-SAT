@@ -14,7 +14,8 @@ void print_out(uint32_t* output_array, std::size_t width , std::size_t seq_len){
 
 
 TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size,
-                                   std::size_t num_heads, std::size_t ff_size, uint32_t ** weightVector) {
+                                   std::size_t num_heads, std::size_t ff_size, uint32_t ** weightVector,
+                                   std::size_t kernelDim, std::size_t maxCol) {
 
     num_heads_ = num_heads;
     head_hidden_size_ = head_hidden_size;
@@ -30,12 +31,21 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
     condense_out = new uint32_t[pre_seq_len * input_dim >> 2];
     intermediateFF = new uint32_t[pre_seq_len * ff_size >> 2];
 
-    addNorm = new AddNormalize(pre_seq_len, input_dim);
+    addNorm = new AddNormalize(pre_seq_len, input_dim, kernelDim, maxCol);
     feedForward0 = new Dense(input_dim, ff_size, weightVector[num_heads * 3+ 1]);
     feedForward1 = new Dense(ff_size, input_dim, weightVector[num_heads * 3 + 2]);
 }
 
 TransformerBlock::~TransformerBlock() = default;
+
+void print_weight(uint32_t* kernel, int n_row, int n_col){
+    for (int i=0; i<n_row; i++){
+        for (int j=0; j<n_col; j++){
+            printf("%08x\t", kernel[i*n_col + j]);
+        }
+        printf("\n");
+    }
+}
 
 void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *output) {
     system("m5 resetstats");
@@ -49,8 +59,15 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     condense->compute(seq_len, multihead_out, condense_out);
     system("m5 dumpresetstats");
 
+    std::cout<< "Before Add/Norm: " << std::endl;
+    print_weight(condense_out, seq_len * head_hidden_size_ * num_heads_/64, 8* 2);
+
     std::cout << "Add Norm"  << std::endl;
-    addNorm->compute(input, condense_out);
+    addNorm->computeRearranged(input, condense_out);
+
+    std::cout<< "After Add/Norm: " << std::endl;
+    print_weight(condense_out, seq_len * head_hidden_size_ * num_heads_/64, 8* 2);
+    getchar();
     system("m5 dumpresetstats");
 
     std::cout << "Feed Forward 0"  << std::endl;

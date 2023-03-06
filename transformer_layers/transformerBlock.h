@@ -11,7 +11,7 @@
 class TransformerBlock{
 public:
     TransformerBlock(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size, std::size_t num_heads,
-                     std::size_t ff_size, uint32_t ** weightVector);
+                     std::size_t ff_size, uint32_t ** weightVector, std::size_t kernelDim, std::size_t maxCol);
 
     virtual ~TransformerBlock();
 

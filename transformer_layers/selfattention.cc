@@ -44,10 +44,10 @@ void SingleHeadSelfAttn::compute(std::size_t seq_len, uint32_t *input, uint32_t 
     system("m5 dumpresetstats");
     value_layer->compute(seq_len, input, value_layer_out);
     system("m5 dumpresetstats");
-    std::cout<< "Before: " << std::endl;
+//    std::cout<< "Before: " << std::endl;
 //    print_weight(key_layer_out, pre_seq_len_ * head_hidden_size_/64, 8* 2);
     Transpose::transpose_rearranged(key_layer_out, key_transposed_layer_out, head_hidden_size_, pre_seq_len_, 8, 2);
-    std::cout<< "After: " << std::endl;
+//    std::cout<< "After: " << std::endl;
 //    print_weight(key_transposed_layer_out, head_hidden_size_, pre_seq_len_ >> 2);
 //    getchar();
     system("m5 dumpresetstats");

@@ -35,14 +35,14 @@ void fill_sparse_weight(uint32_t* kernel, int n_row, int n_col, int sparsity){
     }
 }
 
-void print_weight(uint32_t* kernel, int n_row, int n_col){
-    for (int i=0; i<n_row; i++){
-        for (int j=0; j<n_col; j++){
-            printf("%08x\t", kernel[i*n_col + j]);
-        }
-        printf("\n");
-    }
-}
+//void print_weight(uint32_t* kernel, int n_row, int n_col){
+//    for (int i=0; i<n_row; i++){
+//        for (int j=0; j<n_col; j++){
+//            printf("%08x\t", kernel[i*n_col + j]);
+//        }
+//        printf("\n");
+//    }
+//}
 
 void test(int sparsity_percentage){
     std::cout<<"First line" << std::endl;
@@ -79,7 +79,7 @@ void test(int sparsity_percentage){
     fill_sparse_weight(ff1_kernel, D_FF, D_MODEL >> 2, sparsity_percentage);
     weightVec[NUM_HEAD*3 + 2] = ff1_kernel;
 
-    TransformerBlock selfatten(D_SEQ, D_MODEL, D_Q, NUM_HEAD, D_FF, weightVec);
+    TransformerBlock selfatten(D_SEQ, D_MODEL, D_Q, NUM_HEAD, D_FF, weightVec, KERNEL_DIM, MAX_COL);
     selfatten.compute(D_SEQ, tensor_in, out);
 }
 
