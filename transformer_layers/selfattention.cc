@@ -54,10 +54,10 @@ void SingleHeadSelfAttn::compute(std::size_t seq_len, uint32_t *input, uint32_t 
     smmCompute(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, head_hidden_size_,
                             seq_len, false);
     system("m5 dumpresetstats");
-    softmax->compute(attention_scores, seq_len);
+    softmax->computeRearranged(attention_scores, seq_len, 8);
     system("m5 dumpresetstats");
     smmCompute(seq_len, attention_scores, output, value_layer_out, seq_len, head_hidden_size_, false);
     system("m5 dumpresetstats");
-    softmax->post_softmax(output, seq_len);
+    softmax->post_softmax(output, seq_len, head_hidden_size_);
     system("m5 dumpresetstats");
 }

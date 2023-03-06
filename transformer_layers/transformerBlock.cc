@@ -38,14 +38,6 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
 
 TransformerBlock::~TransformerBlock() = default;
 
-void print_weight(uint32_t* kernel, int n_row, int n_col){
-    for (int i=0; i<n_row; i++){
-        for (int j=0; j<n_col; j++){
-            printf("%08x\t", kernel[i*n_col + j]);
-        }
-        printf("\n");
-    }
-}
 
 void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *output) {
     system("m5 resetstats");
@@ -59,15 +51,9 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     condense->compute(seq_len, multihead_out, condense_out);
     system("m5 dumpresetstats");
 
-    std::cout<< "Before Add/Norm: " << std::endl;
-    print_weight(condense_out, seq_len * head_hidden_size_ * num_heads_/64, 8* 2);
-
     std::cout << "Add Norm"  << std::endl;
     addNorm->computeRearranged(input, condense_out);
 
-    std::cout<< "After Add/Norm: " << std::endl;
-    print_weight(condense_out, seq_len * head_hidden_size_ * num_heads_/64, 8* 2);
-    getchar();
     system("m5 dumpresetstats");
 
     std::cout << "Feed Forward 0"  << std::endl;

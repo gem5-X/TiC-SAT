@@ -28,19 +28,40 @@ void Softmax::compute(uint32_t *input, std::size_t seq_len){
 //            std::cout << "LUT " << i << "\t: " << (int) *(input_ptr) << std::endl;
             input_uptr ++;
         }
-        input_uptr = (uint8_t*) (input + i * (seq_len >> 2));
-        int sum_softmax = 0;
-        for (int j=0; j< seq_len; j++)
-            sum_softmax += *(input_uptr++);
+//        input_uptr = (uint8_t*) (input + i * (seq_len >> 2));
+//        int sum_softmax = 0;
+//        for (int j=0; j< seq_len; j++)
+//            sum_softmax += *(input_uptr++);
     }
 }
 
-void Softmax::post_softmax(uint32_t *input, std::size_t seq_len){
+void Softmax::computeRearranged(uint32_t *input, std::size_t seq_len, std::size_t kernelDim) {
+    // We assume that the input value are fixed-point with 2 bits of fraction.
     for (int i =0; i< seq_len; i++){
-        auto* input_ptr = (int8_t*) (input + i * (seq_len >> 2));
-        for (int j=0; j< seq_len; j++){
-            *input_ptr = (int8_t) (*(input_ptr) >> 6);
-            input_ptr++;
+        int32_t sum = 0;
+        auto* input_uptr = ((uint8_t*) input) + i * kernelDim;
+        for (int j =0; j< seq_len / kernelDim; j++){
+            for (int k=0; k< kernelDim; k++) {
+                *(input_uptr+k) = lookup[(* (uint8_t *) (input_uptr+ k)) >> 3]; // divide by the sqrt od the d_q which is sqrt(64) -> 8
+                sum += *(input_uptr+k);
+            }
+            input_uptr += seq_len* kernelDim;
         }
+        sum = (sum==0) ? sum + 1 : sum;
+        input_uptr = ((uint8_t*) input) + i * kernelDim;
+        for (int j =0; j< seq_len / kernelDim; j++){
+            for (int k=0; k< kernelDim; k++) {
+                *(input_uptr+k) = (uint8_t) ((*(input_uptr+k)) /(sum >> 8));
+            }
+            input_uptr += seq_len* kernelDim;
+        }
+    }
+}
+
+void Softmax::post_softmax(uint32_t *input, std::size_t seq_len, std::size_t headSize){
+    auto* input_ptr = (int8_t*) input;
+    for (int i =0; i< seq_len * headSize; i++){
+        *input_ptr = (int8_t) (*(input_ptr) >> 6);
+        input_ptr++;
     }
 }
