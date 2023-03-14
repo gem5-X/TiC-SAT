@@ -31,9 +31,9 @@
 #ifndef __SYSTOLIC_M2M_H__
 #define __SYSTOLIC_M2M_H__
 
-#define KERNEL_DIM 8
+#define KERNEL_DIM 16
 #define W_DATA 4
-#define MAX_COL 2
+#define MAX_COL 4
 
 #define mem2d(data,data_len,row,col)   data[((row)*(data_len))+(col)]
 

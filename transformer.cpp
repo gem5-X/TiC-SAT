@@ -2,8 +2,8 @@
 //#include"gtest/gtest.h"
 #include "transformer.h"
 
-#define MAX_COL 2
-#define KERNEL_DIM 8
+#define MAX_COL 4
+#define KERNEL_DIM 16
 
 
 void fill_kernel(uint32_t* kernel, int kernel_size){
@@ -16,6 +16,7 @@ void fill_kernel(uint32_t* kernel, int kernel_size){
     }
 }
 
+
 void fill_sparse_weight(uint32_t* kernel, int n_row, int n_col, int sparsity){
     for (int i=0; i<n_row/KERNEL_DIM; i++){
         for (int j=0; j<n_col/MAX_COL; j++){
@@ -27,7 +28,11 @@ void fill_sparse_weight(uint32_t* kernel, int n_row, int n_col, int sparsity){
                         for (int k=0; k<4; k++){
                             result |=  ((uint8_t)(rand() % 5  - 2)) << (8 * k);
                         }
+                        #ifdef REARRANGE
                         kernel[tile_index + ii * MAX_COL + jj]=result;
+                        #else
+                        kernel[(i*KERNEL_DIM+ii)*n_col + (j*MAX_COL + jj)]=result;
+                        #endif
                     }
                 }
             }
@@ -46,6 +51,12 @@ void fill_sparse_weight(uint32_t* kernel, int n_row, int n_col, int sparsity){
 
 void test(int sparsity_percentage){
     std::cout<<"First line" << std::endl;
+#ifdef REARRANGE
+    std::cout<<"Rearranged" << std::endl;
+#else
+    std::cout<<"TiCSAT" << std::endl;
+#endif
+
     uint32_t tensor_in[D_SEQ * D_MODEL >> 2];
     fill_kernel(tensor_in, D_SEQ * D_MODEL >> 2);
     uint32_t out[D_SEQ*D_MODEL >> 2];
@@ -84,7 +95,7 @@ void test(int sparsity_percentage){
 }
 
 int main() {
-    for (int sparsity_level = 0; sparsity_level <= 1; sparsity_level+=5){
+    for (int sparsity_level = 0; sparsity_level <= 90; sparsity_level+=10){
         test(sparsity_level);
     }
     return 0;

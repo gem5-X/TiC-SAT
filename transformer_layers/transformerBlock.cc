@@ -53,7 +53,11 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     system("m5 dumpresetstats");
 
     std::cout << "Add Norm"  << std::endl;
+#ifdef REARRANGE
     addNorm->computeRearranged(input, condense_out);
+#else
+    addNorm->compute(input, condense_out);
+#endif
 
     system("m5 dumpresetstats");
 
@@ -66,6 +70,12 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     system("m5 dumpresetstats");
 
     std::cout << "Add Norm"  << std::endl;
-//    addNorm->compute(condense_out, output);
+#ifdef REARRANGE
+    std::cout << "Add norm rearranged"  << std::endl;
+    addNorm->computeRearranged(condense_out, output);
+#else
+    std::cout << "Add norm TiCSAT"  << std::endl;
+    addNorm->compute(condense_out, output);
+#endif
     system("m5 dumpresetstats");
 }

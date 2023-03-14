@@ -48,18 +48,30 @@ void SingleHeadSelfAttn::compute(std::size_t seq_len, uint32_t *input, uint32_t 
     system("m5 dumpresetstats");
 //    std::cout<< "Before: " << std::endl;
 //    print_weight(key_layer_out, pre_seq_len_ * head_hidden_size_/64, 8* 2);
-    Transpose::transpose_rearranged(key_layer_out, key_transposed_layer_out, head_hidden_size_, pre_seq_len_,
-                                    kernel_size_, max_col_);
-//    std::cout<< "After: " << std::endl;
-//    print_weight(key_transposed_layer_out, head_hidden_size_, pre_seq_len_ >> 2);
-//    getchar();
+#ifdef REARRANGE
+    std::cout<< "Rearranged method" << std::endl;
+    Transpose::transpose_rearranged(key_layer_out, key_transposed_layer_out, head_hidden_size_,
+                                    pre_seq_len_,kernel_size_, max_col_);
     system("m5 dumpresetstats");
-    smmCompute(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, head_hidden_size_,
+    smmComputeRearranged(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, head_hidden_size_,
                             seq_len, false);
     system("m5 dumpresetstats");
     softmax->computeRearranged(attention_scores, seq_len, kernel_size_);
     system("m5 dumpresetstats");
+    smmComputeRearranged(seq_len, attention_scores, output, value_layer_out, seq_len, head_hidden_size_, false);
+#else
+    std::cout<< "TiCSAT method" << std::endl;
+    Transpose::transpose(key_layer_out, key_transposed_layer_out, head_hidden_size_,
+                                    pre_seq_len_);
+    system("m5 dumpresetstats");
+    smmCompute(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, head_hidden_size_,
+                         seq_len, false);
+    system("m5 dumpresetstats");
+    softmax->compute(attention_scores, seq_len);
+    system("m5 dumpresetstats");
     smmCompute(seq_len, attention_scores, output, value_layer_out, seq_len, head_hidden_size_, false);
+#endif
+
     system("m5 dumpresetstats");
     softmax->post_softmax(output, seq_len, head_hidden_size_);
     system("m5 dumpresetstats");

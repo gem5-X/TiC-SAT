@@ -8,14 +8,14 @@
 #include <cmath>
 
 #define W_DATA 4
-#define MAX_COL 2
-#define KERNEL_DIM 8
+#define MAX_COL 4
+#define KERNEL_DIM 16
 #define mem2d(data, data_len, row, col)   data[((row)*(data_len))+(col)]
 
 
 void add8in32(uint32_t &memory, uint32_t &systolicResult);
 
-#define DEVELOP
+//#define DEVELOP
 
 #ifndef DEVELOP
 
@@ -129,7 +129,7 @@ uint32_t smmStream(uint32_t rn) {
 #endif
 
 
-void smmComputeOriginal(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
+void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
                         std::size_t input_size_, std::size_t output_size_, bool sparse) {
 
     int ROWS_IN_BLOCK = std::min(128, (int) (seq_len));
@@ -221,8 +221,8 @@ void smmComputeOriginal(std::size_t seq_len, const uint32_t *input, uint32_t *ou
         }
     }
 #ifdef DEVELOP
-    print_arr(output, seq_len, output_size_);
-    getchar();
+//    print_arr(output, seq_len, output_size_);
+//    getchar();
 #endif
 }
 
@@ -269,7 +269,7 @@ unsigned int * input_rearrangement(const uint32_t *inputs, std::size_t seq_len, 
 
 
 
-void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
+void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
                 std::size_t input_size_, std::size_t output_size_, bool sparse) {
 
     for (int l2Row = 0; l2Row < input_size_ / KERNEL_DIM; l2Row++) {
@@ -324,8 +324,8 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
     }
 
 #ifdef DEVELOP
-    print_arr(output, output_size_ / KERNEL_DIM, seq_len * KERNEL_DIM);
-    getchar();
+//    print_arr(output, output_size_ / KERNEL_DIM, seq_len * KERNEL_DIM);
+//    getchar();
 #endif
 }
 
