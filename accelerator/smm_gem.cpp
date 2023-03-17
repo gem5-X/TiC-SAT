@@ -129,7 +129,7 @@ uint32_t smmStream(uint32_t rn) {
 #endif
 
 
-void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
+void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights, uint32_t * flag,
                         std::size_t input_size_, std::size_t output_size_, bool sparse) {
 
     int ROWS_IN_BLOCK = std::min(128, (int) (seq_len));
@@ -140,6 +140,8 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
     int ROWS_IN_L2 = std::min(512 / ROWS_IN_BLOCK, (int) ceil((float) (seq_len) / (float) ROWS_IN_BLOCK));
     int rowMaxL2 = std::min(256, (int) (input_size_)) / KERNEL_DIM / rowMaxL1;
     int colMaxL2 = std::min(256, (int) (output_size_)) / KERNEL_DIM / colMaxL1;
+
+    auto *flag_ptr = (bool *) (flag);
 
     for (int l2In = 0; l2In < (int) ceil((float) seq_len / (float) ROWS_IN_BLOCK / (float) ROWS_IN_L2); l2In++) {
         for (int l2Row = 0; l2Row < (input_size_ / KERNEL_DIM) / rowMaxL2 / rowMaxL1; l2Row++) {
@@ -158,18 +160,24 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                     int rowBlockSize = KERNEL_DIM;
                                     int colBlockSize = KERNEL_DIM / W_DATA;
                                     uint32_t *wPtr = weights + rowStart * (output_size_ / W_DATA);
-                                    bool non_zero_tile = false;
+                                    if (sparse){
+                                        if (*(flag_ptr + rowStart * output_size_ / (KERNEL_DIM * KERNEL_DIM) + colStart/MAX_COL)){
+                                            continue;
+                                        }
+                                    }
+
+//                                    bool non_zero_tile = false;
                                     for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
                                         for (int j = colStart; j < colStart + colBlockSize; j++) {
                                             uint32_t weight = *(wPtr + j);
                                             smmParamWrite(i - rowStart, j - colStart, weight);
-                                            non_zero_tile += (weight != 0x0);
+//                                            non_zero_tile += (weight != 0x0);
                                         }
                                         wPtr += output_size_ / W_DATA;
                                     }
-                                    if (!non_zero_tile && sparse) {
-                                        continue;
-                                    }
+//                                    if (!non_zero_tile && sparse) {
+//                                        continue;
+//                                    }
 
                                     // Process the multiplication
                                     int base_col_idx = (l2Row * rowMaxL2 * rowMaxL1 + tileRow) * MAX_COL;
@@ -270,24 +278,27 @@ unsigned int * input_rearrangement(const uint32_t *inputs, std::size_t seq_len, 
 
 
 void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
-                std::size_t input_size_, std::size_t output_size_, bool sparse) {
-
+                          uint32_t *flag, std::size_t input_size_, std::size_t output_size_, bool sparse) {
+    uint8_t counter = 0;
     for (int l2Row = 0; l2Row < input_size_ / KERNEL_DIM; l2Row++) {
         for (int l2Col = 0; l2Col < output_size_ / KERNEL_DIM; l2Col++) {
             // Load the kernel with the corresponding weight
-            int rowStart = l2Row * KERNEL_DIM;
-            int colStart = l2Col * KERNEL_DIM / W_DATA;
             int rowBlockSize = KERNEL_DIM;
             int colBlockSize = KERNEL_DIM / W_DATA;
-//            uint32_t *wPtr = weights + rowStart * (output_size_ / W_DATA);
-            bool non_zero_tile = false;
+            if (sparse){
+                if (counter == 32){
+                    counter = 0;
+                    flag ++;
+                }
+                if (*flag & (0x00000001 << counter++)){
+//                    weights += rowBlockSize * colBlockSize;
+                    continue;
+                }
+            }
+
             for (int i = 0 ; i < rowBlockSize * colBlockSize; i++) {
                 uint32_t weight = *(weights++);
                 smmParamWrite(i / colBlockSize, i % colBlockSize, weight);
-                non_zero_tile += (weight != 0x0);
-            }
-            if (!non_zero_tile && sparse) {
-                continue;
             }
 
             // Process the multiplication

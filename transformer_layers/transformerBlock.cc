@@ -15,6 +15,7 @@ void print_out(uint32_t* output_array, std::size_t width , std::size_t seq_len){
 
 TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size,
                                    std::size_t num_heads, std::size_t ff_size, uint32_t ** weightVector,
+                                   uint32_t ** flagVector,
                                    std::size_t kernelDim, std::size_t maxCol) {
 
     num_heads_ = num_heads;
@@ -23,18 +24,22 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
 
     for (int n =0; n< num_heads; n++){
         selfatten[n] = new SingleHeadSelfAttn(pre_seq_len, input_dim, head_hidden_size, weightVector+n*3,
+                                              flagVector+n*3,
                                               kernelDim, maxCol);
     }
 
-    condense = new Dense(num_heads* head_hidden_size, input_dim, weightVector[num_heads * 3]);
+    condense = new Dense(num_heads* head_hidden_size, input_dim, weightVector[num_heads * 3],
+                         flagVector[num_heads * 3]);
 
     multihead_out = new uint32_t[pre_seq_len * num_heads * head_hidden_size >> 2];
     condense_out = new uint32_t[pre_seq_len * input_dim >> 2];
     intermediateFF = new uint32_t[pre_seq_len * ff_size >> 2];
 
     addNorm = new AddNormalize(pre_seq_len, input_dim, kernelDim, maxCol);
-    feedForward0 = new Dense(input_dim, ff_size, weightVector[num_heads * 3+ 1]);
-    feedForward1 = new Dense(ff_size, input_dim, weightVector[num_heads * 3 + 2]);
+    feedForward0 = new Dense(input_dim, ff_size, weightVector[num_heads * 3+ 1],
+                             flagVector[num_heads * 3 + 1]);
+    feedForward1 = new Dense(ff_size, input_dim, weightVector[num_heads * 3 + 2],
+                             flagVector[num_heads * 3 + 2]);
 }
 
 TransformerBlock::~TransformerBlock() = default;
