@@ -27,7 +27,6 @@ inline void
 Convolution2D(conv_layer_args * args, TB_Matrix3D & input,
     TB_Matrix2D & kernels, TB_Matrix3D & output)
 {
-    std::cout<< "Kernel size: "<< args->kernel_size << " N filter: " << args << std::endl;
 #if defined (AIMC)
     // Are we doing a whole convolution or only a partial convolution?
     if (args->use_aimc) {
@@ -203,23 +202,13 @@ Convolution2D(conv_layer_args * args, TB_Matrix3D & input,
         args->kernel_w, args->stride, args->stride, 1, 1, args->padding_type)
         .reshape(Eigen::array<DenseIndex, 2>({args->output_h * args->output_w,
             args->kernel_size}));
-    int outSum = 0;
-    for (int i =0 ; i< output.dimension(0) * output.dimension(1) ; i++)
-        outSum += * (output.data() + i);
-    std::cout << "output sum before : " << outSum << std::endl;
+    std::cout << "TiC-SAT Conv " << patches.dimensions() << std::endl;
     smmComputeEigen(patches.dimension(0),
                     patches.data(),
                     output.data(),
                     kernels.data(),
                     patches.dimension(1),
                     kernels.dimension(1));
-
-    outSum = 0;
-    for (int i =0 ; i< output.dimension(0) * output.dimension(1) ; i++)
-        outSum += * (output.data() + i);
-    std::cout << "output sum after : " << outSum << std::endl;
-
-
     // Do convolution.
 //    output = patches.contract(kernels, product_dims)
 //        .reshape(output.dimensions());
@@ -363,8 +352,16 @@ FullyConnected(fc_layer_args * args, TB_Vector & input,
     // Do fully digital MVM.
     TB_Matrix2D res = input.reshape(
         Eigen::array<Eigen::Index, 2>{1, args->weights_h});
-    output = res.contract(args->weights, product_dims)
-        .reshape(output.dimensions());
+    std::cout << "TiC-SAT FC " << res.dimensions() << std::endl;
+    smmComputeEigen(res.dimension(0),
+                    res.data(),
+                    output.data(),
+                    (args->weights).data(),
+                    res.dimension(1),
+                    (args->weights).dimension(1));
+
+//    output = res.contract(args->weights, product_dims)
+//        .reshape(output.dimensions());
 #endif
     return;
 }

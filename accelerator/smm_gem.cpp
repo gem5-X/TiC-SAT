@@ -378,109 +378,77 @@ void print_arr(uint32_t *array, int n, int p) {
 void smmComputeEigen(std::size_t seq_len, const int8_t *input, int8_t *output, int8_t *weights,
                      std::size_t input_size_, std::size_t output_size_) {
 
-    int ROWS_IN_BLOCK = std::min(128, (int) (seq_len));
-    int rowMaxL1 = std::min(64, (int) (input_size_)) / KERNEL_DIM;
-    int ratio = 64 / std::min(64, (int) (input_size_));
-    int colMaxL1 = std::min(32 * ratio, (int) (output_size_)) / KERNEL_DIM;
-
-    int ROWS_IN_L2 = std::min(512 / ROWS_IN_BLOCK, (int) ceil((float) (seq_len) / (float) ROWS_IN_BLOCK));
-    int rowMaxL2 = std::min(256, (int) (input_size_)) / KERNEL_DIM / rowMaxL1;
-    int colMaxL2 = std::min(256, (int) (output_size_)) / KERNEL_DIM / colMaxL1;
-
     uint32_t tmp = 0;
-    uint32_t q = 1;
 
-    for (int l2In = 0; l2In < (int) ceil((float) seq_len / (float) ROWS_IN_BLOCK / (float) ROWS_IN_L2); l2In++) {
-        for (int l2Row = 0; l2Row < (input_size_ / KERNEL_DIM) / rowMaxL2 / rowMaxL1; l2Row++) {
-            for (int l2Col = 0; l2Col < (output_size_ / KERNEL_DIM) / colMaxL2 / colMaxL1; l2Col++) {
-                for (int tileInL2 = 0; tileInL2 < (ROWS_IN_L2); tileInL2++) {
-                    for (int tileRowL2 = 0; tileRowL2 < rowMaxL2; tileRowL2++) {
-                        for (int tileColL2 = 0; tileColL2 < colMaxL2; tileColL2++) {
-                            for (int tileRowL1 = 0; tileRowL1 < rowMaxL1; tileRowL1++) {
-                                for (int tileColL1 = 0; tileColL1 < colMaxL1; tileColL1++) {
-                                    int tileRow = tileRowL2 * rowMaxL1 + tileRowL1;
-                                    int tileCol = tileColL2 * colMaxL1 + tileColL1;
-                                    int seqBlockIdx = l2In * ROWS_IN_L2 + tileInL2;
-                                    // Load the kernel with the corresponding weight
-                                    int rowStart = (l2Row * rowMaxL2 * rowMaxL1 + tileRow) * KERNEL_DIM;
-                                    int colStart = (l2Col * colMaxL2 * colMaxL1 + tileCol) * KERNEL_DIM;
-                                    int rowBlockSize = KERNEL_DIM;
-                                    int colBlockSize = KERNEL_DIM;
-                                    int8_t *wPtr = weights + rowStart * output_size_;
+    for (int tileRow = 0; tileRow < input_size_ / KERNEL_DIM; tileRow++) {
+        for (int tileCol = 0; tileCol < output_size_ / KERNEL_DIM; tileCol++) {
 
-                                    for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
-                                        for (int j = colStart; j < colStart + colBlockSize; j++) {
-                                            if (q % 4 == 0) {
-                                                smmParamWrite(i - rowStart, (j - colStart) / W_DATA, tmp);
-                                                tmp = 0;
-                                            }
-                                            tmp |= (*(wPtr + j) & 0xff) << (8 * (j % 4));
-                                            q++;
-                                        }
-                                        wPtr += output_size_;
-                                    }
+            int rowBlockSize = KERNEL_DIM;
+            int colBlockSize = KERNEL_DIM;
+            int8_t *wPtr = weights + (tileRow * output_size_ + tileCol ) * KERNEL_DIM;
 
-                                    tmp = 0;
-                                    q = 1;
+            for (int i = 0; i < rowBlockSize; i++) {
+                for (int j = 0; j < colBlockSize; j++) {
+                    tmp |= (*(wPtr + j) & 0xff) << (8 * (j % 4));
+                    if (j % 4 == 3) {
+                        smmParamWrite(i, j / W_DATA, tmp);
+                        tmp = 0;
+                    }
+                }
+                wPtr += output_size_;
+            }
 
-                                    // Process the multiplication
-                                    int base_col_idx = (l2Row * rowMaxL2 * rowMaxL1 + tileRow) * KERNEL_DIM;
-                                    int seqBlockLen = std::min(ROWS_IN_BLOCK,
-                                                               (int) (seq_len - seqBlockIdx * ROWS_IN_BLOCK));
-                                    int outputIndex = 0;
-                                    int8_t *outPtr = output + seqBlockIdx * ROWS_IN_BLOCK * output_size_;
-                                    uint32_t mult;
-                                    const int8_t *inPtr =
-                                            input + base_col_idx + seqBlockIdx * ROWS_IN_BLOCK * input_size_;
-                                    for (int i = 0; i < seqBlockLen; i++) {
-                                        for (int j = 0; j < KERNEL_DIM; j++) {
-                                            if (j % 4 == 3) {
-                                                if (j == KERNEL_DIM - 1) {
-                                                    mult = smmStream(tmp);
-                                                } else {
-                                                    mult = smmQueue(j / W_DATA, tmp);
-                                                }
-                                                tmp = 0;
-                                            }
-                                            tmp |= (*(inPtr + j) & 0xff) << (8 * (j % 4));
+            tmp = 0;
 
-                                            if ((i * KERNEL_DIM + j) >=
-                                                (KERNEL_DIM * (2 * KERNEL_DIM - 1) - W_DATA)) {
-                                                // check if the output is valid
-                                                for (int k = 0; k < 4; k++) {
-                                                    mem2d(outPtr, output_size_, outputIndex / colBlockSize,
-                                                          colStart + outputIndex % colBlockSize) += (
-                                                            (mult >> (8 * (k % 4))) & 0xFF);
-                                                    outputIndex++;
-                                                }
-                                            }
-                                        }
-                                        inPtr += (input_size_);
-                                    }
-                                    for (int i = seqBlockLen * MAX_COL;
-                                         i < MAX_COL * (seqBlockLen + 2 * KERNEL_DIM - 1) - 1; i++) {
-                                        if ((i % MAX_COL) == MAX_COL - 1) {
-                                            mult = smmStream(0);
-                                        } else {
-                                            mult = smmQueue(i % MAX_COL, 0);
-                                        }
-                                        if (i >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) { // check if the output is valid
-                                            for (int k = 0; k < 4; k++) {
-                                                mem2d(outPtr, output_size_, outputIndex / colBlockSize,
-                                                      colStart + outputIndex % colBlockSize) += (
-                                                              (mult >> (8 * (k % 4))) & 0xFF);
-                                                outputIndex++;
-                                            }
-                                        }
-                                    }
-                                }
+            // Process the multiplication
+            int outputIndex = 0;
+            int8_t *outPtr = output + tileCol * KERNEL_DIM;
+            uint32_t mult;
+            const int8_t *inPtr = input + tileRow * KERNEL_DIM;
+            for (int i = 0; i < seq_len; i++) {
+                for (int j = 0; j < KERNEL_DIM; j++) {
+                    tmp |= (*(inPtr + j) & 0xff) << (8 * (j % 4));
+                    if (j % 4 == 3) {
+                        if (j == KERNEL_DIM - 1) {
+                            mult = smmStream(tmp);
+                        } else {
+                            mult = smmQueue(j / W_DATA, tmp);
+                        }
+                        tmp = 0;
+
+                        if ((i * KERNEL_DIM + j) >=
+                        (KERNEL_DIM * (2 * KERNEL_DIM - 1) - W_DATA)) {
+                            // check if the output is valid
+                            for (int k = 0; k < 4; k++) {
+                                mem2d(outPtr, output_size_, outputIndex / colBlockSize,
+                                      outputIndex % colBlockSize) += (
+                                              (mult >> (8 * (k % 4))) & 0xFF);
+                                outputIndex++;
                             }
                         }
+                    }
+                }
+                inPtr += (input_size_);
+            }
+            for (int i = seq_len * MAX_COL;
+                 i < MAX_COL * (seq_len + 2 * KERNEL_DIM - 1) - 1; i++) {
+                if ((i % MAX_COL) == MAX_COL - 1) {
+                    mult = smmStream(0);
+                } else {
+                    mult = smmQueue(i % MAX_COL, 0);
+                }
+                if (i >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) { // check if the output is valid
+                    for (int k = 0; k < 4; k++) {
+                        mem2d(outPtr, output_size_, outputIndex / colBlockSize,
+                              outputIndex % colBlockSize) += (
+                                (mult >> (8 * (k % 4))) & 0xFF);
+                        outputIndex++;
                     }
                 }
             }
         }
     }
+
 #ifdef DEVELOP
     //    print_arr(output, seq_len, output_size_);
     //    getchar();

@@ -170,6 +170,7 @@ generateSingleOutputMatrix3D(T & args)
     args.output = new TB_Matrix3D[1];
     args.output[0] = TB_Matrix3D(args.output_c,
         args.output_h, args.output_w);
+    std::cout << "Args " << args.output_c << "," << args.output_h <<  "," << args.output_w << std::endl;
     args.output[0].setZero(); 
     return;
 }

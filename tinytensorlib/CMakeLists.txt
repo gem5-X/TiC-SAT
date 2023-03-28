@@ -8,9 +8,9 @@ set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}" )
 
 file(GLOB transformer_SRC
         "./*"
-        "unittest/single_conv.cpp"
+        "unittest/ChatfieldF.cpp"
         "eigen/Eigen/*"
         "../accelerator/*"
         )
 
-add_executable(TinyTensorLib unittest/single_conv.cpp ${transformer_SRC})
+add_executable(TinyTensorLib unittest/ChatfieldF.cpp ${transformer_SRC})
