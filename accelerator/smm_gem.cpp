@@ -285,13 +285,25 @@ void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *
             // Load the kernel with the corresponding weight
             int rowBlockSize = KERNEL_DIM;
             int colBlockSize = KERNEL_DIM / W_DATA;
+
+#ifdef LOAD_SKIP
+            bool non_zero_tile = false;
+            for (int i = 0; i < rowBlockSize * colBlockSize; i++) {
+                uint32_t weight = *(weights++);
+                smmParamWrite(i / colBlockSize, i % colBlockSize, weight);
+                non_zero_tile += (weight != 0x0);
+            }
+
+            if (!non_zero_tile && sparse) {
+                continue;
+            }
+#else
             if (sparse) {
                 if (counter == 32) {
                     counter = 0;
                     flag++;
                 }
                 if (*flag & (0x00000001 << counter++)) {
-//                    weights += rowBlockSize * colBlockSize;
                     continue;
                 }
             }
@@ -300,6 +312,7 @@ void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *
                 uint32_t weight = *(weights++);
                 smmParamWrite(i / colBlockSize, i % colBlockSize, weight);
             }
+#endif
 
             // Process the multiplication
             int base_col_idx = l2Row * MAX_COL * seq_len;
