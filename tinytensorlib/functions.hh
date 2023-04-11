@@ -24,173 +24,142 @@
 // Conv2D implementation.  Extracts patches of input and then performs a MMM
 // operation via "contract" or im2col MVMs.
 inline void
-Convolution2D(conv_layer_args * args, TB_Matrix3D & input,
-    TB_Matrix2D & kernels, TB_Matrix3D & output)
-{
-#if defined (AIMC)
+Convolution2D(conv_layer_args *args, TB_Matrix3D &input,
+              TB_Matrix2D &kernels, TB_Matrix3D &output) {
+#if defined (SA)
     // Are we doing a whole convolution or only a partial convolution?
-    if (args->use_aimc) {
-        // Case 1: Kernels fit entirely in AIMC tile.
-        if ((args->aimc_h < 0 && args->aimc_w < 0) ||
-            (args->aimc_h >= args->kernel_size &&
-                args->aimc_w >= args->n_filters)) {
-            // Iterate over pixels.
-            for (int p_i = 0; p_i < args->output_h; p_i++) {
-                for (int p_j = 0; p_j < args->output_w; p_j++) {
-                    // Queue patch, MVM, get pixel output.
-                    queuePatchExperimental(input, p_i, p_j, args->input_c,
-                        args->kernel_h, args->kernel_w, args->stride,
-                        args->thread_n);
-                    aimcProcess();
-                    dequeuePixel(output, p_i, p_j, args->output_c);
-                }
-            }
+    // Set up dimensions array for MMM.
+    Eigen::array<Eigen::IndexPair<int>, 1> product_dims =
+            {Eigen::IndexPair<int>(1, 0)};
+
+    // Extract image patches.
+    TB_Matrix2D patches = input.extract_image_patches(args->kernel_h, args->kernel_w, args->stride,
+                                                      args->stride, 1, 1, args->padding_type)
+            .reshape(Eigen::array<DenseIndex, 2>({args->output_h * args->output_w,
+                                                  args->kernel_size}));
+
+
+    if (args->use_sa) {
+        // Case 1: kernel dimensions are multiples of the systolic array dimensions
+        if ((args->kernel_size % args->sa_size == 0) &&
+            args->n_filters % args->sa_size == 0) {
+
+            std::cout << "Case 1 Conv " << patches.dimensions() << " X " << kernels.dimensions() << std::endl;
+            smmComputeEigen(patches.dimension(0),
+                            patches.data(),
+                            output.data(),
+                            kernels.data(),
+                            patches.dimension(1),
+                            kernels.dimension(1));
+
         }
-        // Case 2: AIMC tile height < kernel height.
-        else if (args->aimc_w >= args->n_filters) {
-            for (int p_i = 0, patch = 0; p_i < args->output_h; p_i++) {
-                for (int p_j = 0; p_j < args->output_w; p_j++, patch++) {
-                    // Queue patch, MVM, get pixel output.
-                    queuePatchExperimental(input, p_i, p_j, args->input_c,
-                        args->kernel_h, args->kernel_w, args->stride,
-                        args->aimc_h, args->thread_n);
-                    aimcProcess();
-                    dequeuePixel(output, p_i, p_j, args->output_c);
-                }
-            }
+            // Case 2: kernel size is not a multiple of SA_SIZE
+        else if (args->n_filters % args->sa_size == 0) {
+            smmComputeEigen(patches.dimension(0),
+                            patches.data(),
+                            output.data(),
+                            kernels.data(),
+                            patches.dimension(1),
+                            kernels.dimension(1));
 
-            // Set up dimensions array for MMM.
-            Eigen::array<Eigen::IndexPair<int>, 1> product_dims =
-                {Eigen::IndexPair<int>(1, 0)};
-
-            // Extract image patches.
-            TB_Matrix2D patches = input.extract_image_patches(args->kernel_h,
-                    args->kernel_w, args->stride, args->stride, 1, 1,
-                    args->padding_type)
-                .reshape(Eigen::array<DenseIndex, 2>(
-                    {args->output_h * args->output_w, args->kernel_size}))
-                .slice(Eigen::array<Eigen::Index, 2>{0, args->aimc_h},
-                    Eigen::array<Eigen::Index, 2>{
-                        args->output_h * args->output_w,
-                        args->kernel_size - args->aimc_h});
+            const int multiple_sa_size = args->kernel_size - (args->kernel_size % args->sa_size);
+            std::cout << "Case 2 Conv " << patches.dimensions() << " X " << kernels.dimensions() <<
+                      " Size " << multiple_sa_size << std::endl;
 
             // Perform digital MVM.
-            output += patches.contract(kernels.slice(
-                Eigen::array<Eigen::Index, 2>{args->aimc_h, 0},
-                Eigen::array<Eigen::Index, 2>{args->kernel_size - args->aimc_h,
-                    args->n_filters}), product_dims)
-                .reshape(output.dimensions());
+            output += patches.slice(Eigen::array<Eigen::Index, 2>{0, multiple_sa_size},
+                                    Eigen::array<Eigen::Index, 2>{args->output_h * args->output_w,
+                                                                  args->kernel_size - multiple_sa_size})
+                    .contract(kernels.slice(
+                            Eigen::array<Eigen::Index, 2>{multiple_sa_size, 0},
+                            Eigen::array<Eigen::Index, 2>{args->kernel_size - multiple_sa_size,
+                                                          args->n_filters}), product_dims)
+                    .reshape(output.dimensions());
 
         }
-        // Case 3: AIMC tile width < # of kernels.
-        else if (args->aimc_h >= args->kernel_size) {
-            for (int p_i = 0; p_i < args->output_h; p_i++) {
-                for (int p_j = 0; p_j < args->output_w; p_j++) {
-                    // Queue patch, MVM, get pixel output.
-                    queuePatchExperimental(input, p_i, p_j, args->input_c,
-                        args->kernel_h, args->kernel_w, args->stride,
-                        args->thread_n);
-                    aimcProcess();
-                    dequeuePixel(output, p_i, p_j, args->aimc_w);
-                }
-            }
+            // Case 3: n filter is not a multiple of SA_SIZE
+        else if (args->kernel_size % args->sa_size == 0) {
+            smmComputeEigen(patches.dimension(0),
+                            patches.data(),
+                            output.data(),
+                            kernels.data(),
+                            patches.dimension(1),
+                            kernels.dimension(1));
 
-            // Set up dimensions array for MMM.
-            Eigen::array<Eigen::IndexPair<int>, 1> product_dims =
-                {Eigen::IndexPair<int>(1, 0)};
+            const int multiple_sa_size = args->n_filters - (args->n_filters % args->sa_size);
 
-            // Extract image patches.
-            TB_Matrix2D patches = input.extract_image_patches(args->kernel_h,
-                    args->kernel_w, args->stride, args->stride, 1, 1,
-                    args->padding_type)
-                .reshape(Eigen::array<DenseIndex, 2>(
-                    {args->output_h * args->output_w, args->kernel_size}));
+            std::cout << "Case 3 Conv " << patches.dimensions() << " X " << kernels.dimensions() <<
+                      " Size " << multiple_sa_size << std::endl;
+
 
             // Perform digital MVM.
             output.slice(
-                Eigen::array<Eigen::Index, 3>{args->aimc_w, 0, 0},
-                Eigen::array<Eigen::Index, 3>{args->n_filters - args->aimc_w,
-                    args->output_h, args->output_w}
+                    Eigen::array<Eigen::Index, 3>{multiple_sa_size, 0, 0},
+                    Eigen::array<Eigen::Index, 3>{args->n_filters - multiple_sa_size,
+                                                  args->output_h, args->output_w}
             ) += patches.contract(kernels.slice(
-                Eigen::array<Eigen::Index, 2>{0, args->aimc_w},
-                Eigen::array<Eigen::Index, 2>{args->kernel_size,
-                    args->n_filters - args->aimc_w}), product_dims)
-                .reshape(Eigen::array<DenseIndex, 3>(
-                    {args->n_filters - args->aimc_w,
-                    args->output_h, args->output_w}));
+                            Eigen::array<Eigen::Index, 2>{0, multiple_sa_size},
+                            Eigen::array<Eigen::Index, 2>{args->kernel_size,
+                                                          args->n_filters - multiple_sa_size}), product_dims)
+                    .reshape(Eigen::array<DenseIndex, 3>(
+                            {args->n_filters - multiple_sa_size,
+                             args->output_h, args->output_w}));
         }
-        // Case 4: AIMC tile doesn't fit both kernel height and # of kernels.
+            // Case 4: SA tile doesn't fit both kernel height and # of kernels.
         else {
-            for (int p_i = 0; p_i < args->output_h; p_i++) {
-                for (int p_j = 0; p_j < args->output_w; p_j++) {
-                    // Queue patch, MVM, get pixel output.
-                    queuePatchExperimental(input, p_i, p_j, args->input_c,
-                           args->kernel_h, args->kernel_w, args->stride,
-                           args->aimc_h, args->thread_n);
-                    aimcProcess();
-                    dequeuePixel(output, p_i, p_j, args->aimc_w);
-                }
-            }
+            smmComputeEigen(patches.dimension(0),
+                            patches.data(),
+                            output.data(),
+                            kernels.data(),
+                            patches.dimension(1),
+                            kernels.dimension(1));
 
-            // Set up dimensions array for MMM.
-            Eigen::array<Eigen::IndexPair<int>, 1> product_dims =
-                {Eigen::IndexPair<int>(1, 0)};
+            const int multiple_sa_size_nfilter = args->n_filters - (args->n_filters % args->sa_size);
+            const int multiple_sa_size_kernel = args->kernel_size - (args->kernel_size % args->sa_size);
+            std::cout << "Case 4 Conv " << patches.dimensions() << " X " << kernels.dimensions() <<
+                      " Size " << multiple_sa_size_nfilter << " and " << multiple_sa_size_kernel << std::endl;
 
-            // Extract image patches.
-            TB_Matrix2D patches = input.extract_image_patches(args->kernel_h,
-                    args->kernel_w, args->stride, args->stride, 1, 1,
-                    args->padding_type)
-                .reshape(Eigen::array<DenseIndex, 2>(
-                    {args->output_h * args->output_w, args->kernel_size}));
 
             // Perform right-hand partial digital MVM.
             output.slice(
-                Eigen::array<Eigen::Index, 3>{args->aimc_w, 0, 0},
-                Eigen::array<Eigen::Index, 3>{args->n_filters - args->aimc_w,
-                    args->output_h, args->output_w}
+                    Eigen::array<Eigen::Index, 3>{multiple_sa_size_nfilter, 0, 0},
+                    Eigen::array<Eigen::Index, 3>{args->n_filters - multiple_sa_size_nfilter,
+                                                  args->output_h, args->output_w}
             ) += patches
-                .contract(kernels
-                    .slice(
-                        Eigen::array<Eigen::Index, 2>{0, args->aimc_w},
-                        Eigen::array<Eigen::Index, 2>{args->kernel_size,
-                            args->n_filters - args->aimc_w}), product_dims)
+                    .contract(kernels
+                                      .slice(
+                                              Eigen::array<Eigen::Index, 2>{0, multiple_sa_size_nfilter},
+                                              Eigen::array<Eigen::Index, 2>{args->kernel_size,
+                                                                            args->n_filters -
+                                                                            multiple_sa_size_nfilter}),
+                              product_dims)
                     .reshape(Eigen::array<DenseIndex, 3>(
-                        {args->n_filters - args->aimc_w,
-                        args->output_h, args->output_w}));
+                            {args->n_filters - multiple_sa_size_nfilter,
+                             args->output_h, args->output_w}));
 
             // Perform bottom-left partial digital MVM.
             output.slice(
-                Eigen::array<Eigen::Index, 3>{0, 0, 0},
-                Eigen::array<Eigen::Index, 3>{args->aimc_w,
-                    args->output_h, args->output_w}
+                    Eigen::array<Eigen::Index, 3>{0, 0, 0},
+                    Eigen::array<Eigen::Index, 3>{multiple_sa_size_nfilter,
+                                                  args->output_h, args->output_w}
             ) += patches
-                .slice(Eigen::array<Eigen::Index, 2>{0, args->aimc_h},
-                    Eigen::array<Eigen::Index, 2>{
-                        args->output_h * args->output_w,
-                        args->kernel_size - args->aimc_h})
-                .contract(kernels.slice(
-                    Eigen::array<Eigen::Index, 2>{args->aimc_h, 0},
-                    Eigen::array<Eigen::Index, 2>{
-                        args->kernel_size - args->aimc_h, args->aimc_w}),
-                product_dims)
-                .reshape(Eigen::array<DenseIndex, 3>(
-                        {args->aimc_w, args->output_h, args->output_w}));
+                    .slice(Eigen::array<Eigen::Index, 2>{0, multiple_sa_size_kernel},
+                           Eigen::array<Eigen::Index, 2>{
+                                   args->output_h * args->output_w,
+                                   args->kernel_size - multiple_sa_size_kernel})
+                    .contract(kernels.slice(
+                                      Eigen::array<Eigen::Index, 2>{multiple_sa_size_kernel, 0},
+                                      Eigen::array<Eigen::Index, 2>{
+                                              args->kernel_size - multiple_sa_size_kernel, multiple_sa_size_nfilter}),
+                              product_dims)
+                    .reshape(Eigen::array<DenseIndex, 3>(
+                            {multiple_sa_size_nfilter, args->output_h, args->output_w}));
+
         }
     } else {
-        // Set up dimensions array for MMM.
-        Eigen::array<Eigen::IndexPair<int>, 1> product_dims =
-            {Eigen::IndexPair<int>(1, 0)};
-
-        // Extract image patches.
-        TB_Matrix2D patches = input.extract_image_patches(args->kernel_h,
-            args->kernel_w, args->stride, args->stride, 1, 1,
-            args->padding_type)
-            .reshape(Eigen::array<DenseIndex, 2>(
-                {args->output_h * args->output_w, args->kernel_size}));
-
         // Do fully digital convolution.
         output = patches.contract(kernels, product_dims)
-            .reshape(output.dimensions());  
+                .reshape(output.dimensions());
     }
 #else
     // Set up dimensions array for MMM.
@@ -202,7 +171,7 @@ Convolution2D(conv_layer_args * args, TB_Matrix3D & input,
         args->kernel_w, args->stride, args->stride, 1, 1, args->padding_type)
         .reshape(Eigen::array<DenseIndex, 2>({args->output_h * args->output_w,
             args->kernel_size}));
-    std::cout << "TiC-SAT Conv " << patches.dimensions() << std::endl;
+    std::cout << "TiC-SAT Conv " << patches.dimensions() << " X " << kernels.dimensions() << std::endl;
     smmComputeEigen(patches.dimension(0),
                     patches.data(),
                     output.data(),
@@ -221,12 +190,11 @@ Convolution2D(conv_layer_args * args, TB_Matrix3D & input,
 // TODO: Optimize 3D accesses with vectorization as in previous FullyConnected
 // method.
 inline void
-FullyConnected(fc_layer_args * args, TB_Vector & input,
-    TB_Vector & output)
-{
+FullyConnected(fc_layer_args *args, TB_Vector &input,
+               TB_Vector &output) {
 #if defined (AIMC)
     // Are we doing a whole MVM or only a partial MVM?
-    if (args->use_aimc) {
+    if (args->use_sa) {
         // Case 1: Weights fit entirely in AIMC tile.
         if ((args->aimc_h < 0 && args->aimc_w < 0) ||
             (args->aimc_h >= args->input_size &&
@@ -347,12 +315,12 @@ FullyConnected(fc_layer_args * args, TB_Vector & input,
 #else
     // Set up dimensions array and input for MVM.
     Eigen::array<Eigen::IndexPair<int>, 1> product_dims =
-        {Eigen::IndexPair<int>(1, 0)};
+            {Eigen::IndexPair<int>(1, 0)};
 
     // Do fully digital MVM.
     TB_Matrix2D res = input.reshape(
-        Eigen::array<Eigen::Index, 2>{1, args->weights_h});
-    std::cout << "TiC-SAT FC " << res.dimensions() << std::endl;
+            Eigen::array<Eigen::Index, 2>{1, args->weights_h});
+    std::cout << "TiC-SAT FC " << res.dimensions() << " X " << (args->weights).dimensions() << std::endl;
     smmComputeEigen(res.dimension(0),
                     res.data(),
                     output.data(),
@@ -368,9 +336,8 @@ FullyConnected(fc_layer_args * args, TB_Vector & input,
 
 // Pooling operation implementations.
 inline void
-Pooling(pool_layer_args * args, TB_Matrix3D & input,
-    TB_Matrix3D & output, pool_ops_t pool_type)
-{
+Pooling(pool_layer_args *args, TB_Matrix3D &input,
+        TB_Matrix3D &output, pool_ops_t pool_type) {
     int i, j, ii, jj, ch, p_s;
 
     // Dimensions to perform pool on.
@@ -384,13 +351,13 @@ Pooling(pool_layer_args * args, TB_Matrix3D & input,
         case MAX_POOL_TYPE: {
             for (ch = 0; ch < args->output_c; ch++) {
                 for (i = 0, ii = 0; i < args->output_h; i += args->stride,
-                    ii++) {
+                        ii++) {
                     for (j = 0, jj = 0; j < args->output_w; j += args->stride,
-                        jj++) {
+                            jj++) {
                         TB_Vector tmp = input.slice( // Offsets, Extents
-                            Eigen::array<Eigen::Index, 3>{ch, i, j},
-                            Eigen::array<Eigen::Index, 3>{1, args->pool_h,
-                                args->pool_w}
+                                Eigen::array<Eigen::Index, 3>{ch, i, j},
+                                Eigen::array<Eigen::Index, 3>{1, args->pool_h,
+                                                              args->pool_w}
                         ).maximum(dims);
                         output(ch, ii, jj) = tmp(0);
                     }
@@ -404,13 +371,13 @@ Pooling(pool_layer_args * args, TB_Matrix3D & input,
 
             for (ch = 0; ch < args->output_c; ch++) {
                 for (i = 0, ii = 0; i < args->output_h; i += args->stride,
-                    ii++) {
+                        ii++) {
                     for (j = 0, jj = 0; j < args->output_w; j += args->stride,
-                        jj++) {
+                            jj++) {
                         TB_Vector tmp = input.slice( // Offsets, Extents
-                            Eigen::array<Eigen::Index, 3>{ch, i, j},
-                            Eigen::array<Eigen::Index, 3>{1, args->pool_h,
-                                args->pool_w}
+                                Eigen::array<Eigen::Index, 3>{ch, i, j},
+                                Eigen::array<Eigen::Index, 3>{1, args->pool_h,
+                                                              args->pool_w}
                         ).sum(dims);
                         output(ch, ii, jj) = tmp(0) / p_s;
                     }
@@ -418,7 +385,9 @@ Pooling(pool_layer_args * args, TB_Matrix3D & input,
             }
             break;
         }
-        default: {break;}
+        default: {
+            break;
+        }
     }
 
     return;
@@ -426,8 +395,7 @@ Pooling(pool_layer_args * args, TB_Matrix3D & input,
 
 // Flatten operation implementation.
 inline void
-Flatten(TB_Matrix3D & m, TB_Vector & v)
-{
+Flatten(TB_Matrix3D &m, TB_Vector &v) {
     v = m.reshape(v.dimensions());
 
     return;
@@ -435,18 +403,16 @@ Flatten(TB_Matrix3D & m, TB_Vector & v)
 
 // The combination portion of the residual block implementation.
 inline void
-EndResidual(end_residual_layer_args * args, TB_Matrix3D & input,
-    TB_Matrix3D & residual, TB_Matrix3D & output)
-{
+EndResidual(end_residual_layer_args *args, TB_Matrix3D &input,
+            TB_Matrix3D &residual, TB_Matrix3D &output) {
     output = input + residual;
     return;
 }
 
 // DWConv2D brute-force implementation.
 inline void
-DepthwiseConvolution2D(dwconv_layer_args * args, TB_Matrix3D & input,
-    TB_Matrix3D & kernels, TB_Matrix3D & output)
-{
+DepthwiseConvolution2D(dwconv_layer_args *args, TB_Matrix3D &input,
+                       TB_Matrix3D &kernels, TB_Matrix3D &output) {
     // Lovingly borrowed from https://iq.opengenus.org/depthwise-convolution/.
     // Note: Using extract_image_patches is NOT faster than brute force here.
     for (int out_h = 0; out_h < args->output_h; out_h++) {
@@ -455,8 +421,8 @@ DepthwiseConvolution2D(dwconv_layer_args * args, TB_Matrix3D & input,
                 int tmp = 0;
                 for (int j = 0; j < args->kernel_w; j++) {
                     for (int i = 0; i < args->kernel_h; i++) {
-                        tmp += kernels(channel, i, j) * 
-                            input(channel, out_h + i, out_w + j);
+                        tmp += kernels(channel, i, j) *
+                               input(channel, out_h + i, out_w + j);
                     }
                 }
                 output(channel, out_h, out_w) = tmp;
@@ -469,13 +435,20 @@ DepthwiseConvolution2D(dwconv_layer_args * args, TB_Matrix3D & input,
 
 // Normalization operation implementations.
 inline void
-Normalization(TB_Vector & v, norm_ops_t norm_type)
-{
-    switch(norm_type) {
-        case NO_NORM_TYPE: {break;}
-        case BATCH_NORM_TYPE: {break;}
-        case LRN_NORM_TYPE: {break;}
-        default: {break;}
+Normalization(TB_Vector &v, norm_ops_t norm_type) {
+    switch (norm_type) {
+        case NO_NORM_TYPE: {
+            break;
+        }
+        case BATCH_NORM_TYPE: {
+            break;
+        }
+        case LRN_NORM_TYPE: {
+            break;
+        }
+        default: {
+            break;
+        }
     }
 
     return;
@@ -489,15 +462,18 @@ Normalization(TB_Vector & v, norm_ops_t norm_type)
  * with deep convolutional neural networks,” in NIPS, 2012, pp. 1106–1114.
  */
 inline void
-Normalization(TB_Matrix3D & m, norm_ops_t norm_type)
-{
+Normalization(TB_Matrix3D &m, norm_ops_t norm_type) {
     int chas = m.dimensions()[0];
     int rows = m.dimensions()[1];
     int cols = m.dimensions()[2];
 
-    switch(norm_type) {
-        case NO_NORM_TYPE: {break;}
-        case BATCH_NORM_TYPE: {break;}
+    switch (norm_type) {
+        case NO_NORM_TYPE: {
+            break;
+        }
+        case BATCH_NORM_TYPE: {
+            break;
+        }
         case LRN_NORM_TYPE: {
             const int size = chas * rows * cols;
             const double delta = 5.0 / 2.0; // n / 2
@@ -507,8 +483,8 @@ Normalization(TB_Matrix3D & m, norm_ops_t norm_type)
 
             for (int i = 0; i < size; i++) {
                 double sum = 0;
-                int min = (int)fmax(0, i - delta);
-                int max = (int)fmin(upper, i + delta);
+                int min = (int) fmax(0, i - delta);
+                int max = (int) fmin(upper, i + delta);
 
                 // Grab sum.
                 for (int j = min; j < max; j++) {
@@ -523,7 +499,9 @@ Normalization(TB_Matrix3D & m, norm_ops_t norm_type)
 
             break;
         }
-        default: {break;}
+        default: {
+            break;
+        }
     }
 
     return;
@@ -531,8 +509,7 @@ Normalization(TB_Matrix3D & m, norm_ops_t norm_type)
 
 // Activation function implementations.
 inline void
-Activation(TB_Vector & v, act_ops_t act_type)
-{
+Activation(TB_Vector &v, act_ops_t act_type) {
     int size = v.dimensions()[0];
 
     switch (act_type) {
@@ -544,7 +521,9 @@ Activation(TB_Vector & v, act_ops_t act_type)
             }
             break;
         }
-        case SIGMOID_ACT_TYPE: {break;}
+        case SIGMOID_ACT_TYPE: {
+            break;
+        }
         case SOFTMAX_ACT_TYPE: {
             // Not necessarily the most efficient, although correct,
             // implementation.
@@ -564,17 +543,18 @@ Activation(TB_Vector & v, act_ops_t act_type)
                     v(i) = 6;
                 }
             }
-            break;   
+            break;
         }
-        default: {break;}
+        default: {
+            break;
+        }
     }
 
     return;
 }
 
 inline void
-Activation(TB_Matrix3D & m, act_ops_t act_type)
-{
+Activation(TB_Matrix3D &m, act_ops_t act_type) {
     int chas = m.dimensions()[0];
     int rows = m.dimensions()[1];
     int cols = m.dimensions()[2];
@@ -592,7 +572,9 @@ Activation(TB_Matrix3D & m, act_ops_t act_type)
             }
             break;
         }
-        case SIGMOID_ACT_TYPE: {break;}
+        case SIGMOID_ACT_TYPE: {
+            break;
+        }
         case SOFTMAX_ACT_TYPE: {
             // Not necessarily the most efficient, although correct,
             // implementation.
@@ -622,7 +604,9 @@ Activation(TB_Matrix3D & m, act_ops_t act_type)
             }
             break;
         }
-        default: {break;}
+        default: {
+            break;
+        }
     }
 
     return;
@@ -633,18 +617,16 @@ Activation(TB_Matrix3D & m, act_ops_t act_type)
 /////////////////////
 
 inline void
-doLayer(conv_layer_args & args, int in_idx=0, int out_idx=0)
-{
+doLayer(conv_layer_args &args, int in_idx = 0, int out_idx = 0) {
     Convolution2D(&args, args.input[in_idx], args.weights,
-        args.output[out_idx]);
+                  args.output[out_idx]);
     Normalization(args.output[out_idx], args.normalization);
     Activation(args.output[out_idx], args.activation);
     return;
 }
 
 inline void
-doLayer(fc_layer_args & args, int in_idx=0, int out_idx=0)
-{
+doLayer(fc_layer_args &args, int in_idx = 0, int out_idx = 0) {
     FullyConnected(&args, args.input[in_idx], args.output[out_idx]);
     Normalization(args.output[out_idx], args.normalization);
     Activation(args.output[out_idx], args.activation);
@@ -652,8 +634,7 @@ doLayer(fc_layer_args & args, int in_idx=0, int out_idx=0)
 }
 
 inline void
-doLayer(pool_layer_args & args, int in_idx=0, int out_idx=0)
-{
+doLayer(pool_layer_args &args, int in_idx = 0, int out_idx = 0) {
     Pooling(&args, args.input[in_idx], args.output[out_idx], args.pool_type);
     Normalization(args.output[out_idx], args.normalization);
     Activation(args.output[out_idx], args.activation);
@@ -661,8 +642,7 @@ doLayer(pool_layer_args & args, int in_idx=0, int out_idx=0)
 }
 
 inline void
-doLayer(flatten_layer_args & args, int in_idx=0, int out_idx=0)
-{
+doLayer(flatten_layer_args &args, int in_idx = 0, int out_idx = 0) {
     Flatten(args.input[in_idx], args.output[out_idx]);
     Normalization(args.output[out_idx], args.normalization);
     Activation(args.output[out_idx], args.activation);
@@ -670,20 +650,18 @@ doLayer(flatten_layer_args & args, int in_idx=0, int out_idx=0)
 }
 
 inline void
-doLayer(end_residual_layer_args & args, int in_idx=0, int out_idx=0)
-{
+doLayer(end_residual_layer_args &args, int in_idx = 0, int out_idx = 0) {
     EndResidual(&args, args.input[in_idx], args.residual[in_idx],
-        args.output[out_idx]);
+                args.output[out_idx]);
     Normalization(args.output[out_idx], args.normalization);
     Activation(args.output[out_idx], args.activation);
     return;
 }
 
 inline void
-doLayer(dwconv_layer_args & args, int in_idx=0, int out_idx=0)
-{
+doLayer(dwconv_layer_args &args, int in_idx = 0, int out_idx = 0) {
     DepthwiseConvolution2D(&args, args.input[in_idx], args.weights,
-        args.output[out_idx]);
+                           args.output[out_idx]);
     Normalization(args.output[out_idx], args.normalization);
     Activation(args.output[out_idx], args.activation);
     return;

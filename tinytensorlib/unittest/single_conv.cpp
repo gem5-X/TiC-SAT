@@ -27,15 +27,14 @@ conv_layer_args conv1 = conv_layer_args(
     SINGLE_BUFFER_TYPE, // Buffer type.
     13,                 // Input height.
     13,                 // Input width.
-    384,                // Input channels.
+    99,                // Input channels.
     3,                  // Kernel height.
     3,                  // Kernel width.
-    384,                // Number of filters.
+    389,                // Number of filters.
     1,                  // Stride.
-#if defined (AIMC)
+#if defined (SA)
     true,               // Are we using AIMC tiles?
-    -1,                 // Allocated tile height? (-1 = infinite)
-    -1,                 // Allocated tile width? (-1 = infinite)
+    SA_SIZE,                 // Allocated tile height? (-1 = infinite)
 #endif
     1,                  // Padding.
     NO_NORM_TYPE,       // Normalization.

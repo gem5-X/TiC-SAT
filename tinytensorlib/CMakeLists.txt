@@ -3,14 +3,14 @@ project(TinyTensorLib)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(GCC_COVERAGE_COMPILE_FLAGS "-DDEVELOP")
+set(GCC_COVERAGE_COMPILE_FLAGS "-DDEVELOP -DSA -DSA_SIZE=12")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}" )
 
 file(GLOB transformer_SRC
         "./*"
-        "unittest/ChatfieldF.cpp"
+        "unittest/single_conv.cpp"
         "eigen/Eigen/*"
         "../accelerator/*"
         )
 
-add_executable(TinyTensorLib unittest/ChatfieldF.cpp ${transformer_SRC})
+add_executable(TinyTensorLib unittest/single_conv.cpp ${transformer_SRC})

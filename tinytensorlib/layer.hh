@@ -260,10 +260,9 @@ struct CONV_LAYER_ARGS :
     const int n_filters;    // Number of filters/kernels.
     const int stride;       // Stride over input.
     const int padding;      // Are we padding the input?
-#if defined (AIMC)
-    bool use_aimc;    // Are we using analog tiles?
-    int aimc_h;       // Height of allocated AIMC tiles.
-    int aimc_w;       // Width of allocated AIMC tiles.
+#if defined (SA)
+    bool use_sa;    // Are we using analog tiles?
+    int sa_size;       // Height of allocated AIMC tiles.
 #endif
     PaddingType padding_type;
 
@@ -275,8 +274,8 @@ struct CONV_LAYER_ARGS :
         bool last, buffer_t b_t, const int in_h, const int in_w,
         const int in_c, const int k_h, const int k_w, const int n_f,
         const int stri,
-#if defined (AIMC)
-        bool u_a, int a_h, int a_w,
+#if defined (SA)
+        bool u_a, int a_h,
 #endif
         const int pad, norm_ops_t norm, act_ops_t act) :
         LAYER_ARG_BASE(lyr, inf, thrd, first, last, b_t),
@@ -286,8 +285,8 @@ struct CONV_LAYER_ARGS :
         kernel_h(k_h), kernel_w(k_w), kernel_c(in_c),
         kernel_size(k_w * k_h * in_c), n_filters(n_f), stride(stri),
         padding(pad)
-#if defined (AIMC)
-        , use_aimc(u_a), aimc_h(a_h), aimc_w(a_w)
+#if defined (SA)
+        , use_sa(u_a), sa_size(a_h)
 #endif
     {
         args_type = CONV_ARGS_TYPE;
@@ -327,9 +326,8 @@ struct FC_LAYER_ARGS : public LAYER_ARG_BASE, LAYER_ARG_1D_IN, LAYER_ARG_1D_OUT
     const int weights_h;    // Weights matrix height.
     const int weights_w;    // Weights matrix width.
 #if defined (AIMC)
-    bool use_aimc;    // Are we using analog tiles?
-    int aimc_h;       // Height of allocated AIMC tiles.
-    int aimc_w;       // Width of allocated AIMC tiles.
+    bool use_sa;    // Are we using analog tiles?
+    int sa_size;       // Height of allocated AIMC tiles.
 #endif
     TB_Matrix2D weights;    // Weights matrix.
 
@@ -337,7 +335,7 @@ struct FC_LAYER_ARGS : public LAYER_ARG_BASE, LAYER_ARG_1D_IN, LAYER_ARG_1D_OUT
     FC_LAYER_ARGS(const int lyr, const int inf, const int thrd, bool first,
         bool last,  buffer_t b_t, const int in_s,
 #if defined (AIMC)
-        bool u_a, int a_h, int a_w,
+        bool u_a, int a_h,
 #endif
         const int out_s, norm_ops_t norm, act_ops_t act) :
         LAYER_ARG_BASE(lyr, inf, thrd, first, last, b_t),
@@ -345,7 +343,7 @@ struct FC_LAYER_ARGS : public LAYER_ARG_BASE, LAYER_ARG_1D_IN, LAYER_ARG_1D_OUT
         LAYER_ARG_1D_OUT(inf, last, out_s, norm, act),
         weights_h(in_s), weights_w(out_s)
 #if defined (AIMC)
-        , use_aimc(u_a), aimc_h(a_h), aimc_w(a_w)
+        , use_sa(u_a), sa_size(a_h)
 #endif
     {
         args_type = FC_ARGS_TYPE;
