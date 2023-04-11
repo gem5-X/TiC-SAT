@@ -302,7 +302,7 @@ struct CONV_LAYER_ARGS :
     CONV_LAYER_ARGS(const int lyr, const int inf, buffer_t b_t,
         T & in_lyr, const int k_h, const int k_w,
         const int n_f, const int stri,
-#if defined (AIMC)
+#if defined (SA)
         bool u_a,
 #endif
         const int pad, norm_ops_t norm, act_ops_t act);
@@ -311,7 +311,7 @@ struct CONV_LAYER_ARGS :
     CONV_LAYER_ARGS(const int lyr, const int inf, const int thrd, buffer_t b_t,
         T & in_lyr, const int k_h, const int k_w,
         const int n_f, const int stri,
-#if defined (AIMC)
+#if defined (SA)
         bool u_a,
 #endif
         const int pad, norm_ops_t norm, act_ops_t act);
@@ -325,7 +325,7 @@ struct FC_LAYER_ARGS : public LAYER_ARG_BASE, LAYER_ARG_1D_IN, LAYER_ARG_1D_OUT
     // Fully connected variables.
     const int weights_h;    // Weights matrix height.
     const int weights_w;    // Weights matrix width.
-#if defined (AIMC)
+#if defined (SA)
     bool use_sa;    // Are we using analog tiles?
     int sa_size;       // Height of allocated AIMC tiles.
 #endif
@@ -334,7 +334,7 @@ struct FC_LAYER_ARGS : public LAYER_ARG_BASE, LAYER_ARG_1D_IN, LAYER_ARG_1D_OUT
     // Constructor and destructor.
     FC_LAYER_ARGS(const int lyr, const int inf, const int thrd, bool first,
         bool last,  buffer_t b_t, const int in_s,
-#if defined (AIMC)
+#if defined (SA)
         bool u_a, int a_h,
 #endif
         const int out_s, norm_ops_t norm, act_ops_t act) :
@@ -342,7 +342,7 @@ struct FC_LAYER_ARGS : public LAYER_ARG_BASE, LAYER_ARG_1D_IN, LAYER_ARG_1D_OUT
         LAYER_ARG_1D_IN(inf, first, in_s),
         LAYER_ARG_1D_OUT(inf, last, out_s, norm, act),
         weights_h(in_s), weights_w(out_s)
-#if defined (AIMC)
+#if defined (SA)
         , use_sa(u_a), sa_size(a_h)
 #endif
     {
@@ -357,7 +357,7 @@ struct FC_LAYER_ARGS : public LAYER_ARG_BASE, LAYER_ARG_1D_IN, LAYER_ARG_1D_OUT
     template<typename T>
     FC_LAYER_ARGS(const int lyr, const int inf, buffer_t b_t,
         T & in_lyr,
-#if defined (AIMC)
+#if defined (SA)
         bool u_a,
 #endif
         const int out_s, norm_ops_t norm, act_ops_t act);    
@@ -365,7 +365,7 @@ struct FC_LAYER_ARGS : public LAYER_ARG_BASE, LAYER_ARG_1D_IN, LAYER_ARG_1D_OUT
     template<typename T>
     FC_LAYER_ARGS(const int lyr, const int inf, const int thrd, buffer_t b_t,
         T & in_lyr,
-#if defined (AIMC)
+#if defined (SA)
         bool u_a,
 #endif
         const int out_s, norm_ops_t norm, act_ops_t act);
@@ -533,7 +533,7 @@ struct DWCONV_LAYER_ARGS :
 template<typename T>
 CONV_LAYER_ARGS::CONV_LAYER_ARGS(const int lyr, const int inf, buffer_t b_t,
     T & in_lyr, const int k_h, const int k_w, const int n_f, const int stri,
-#if defined (AIMC)
+#if defined (SA)
     bool u_a,
 #endif
     const int pad, norm_ops_t norm, act_ops_t act) :
@@ -545,8 +545,8 @@ CONV_LAYER_ARGS::CONV_LAYER_ARGS(const int lyr, const int inf, buffer_t b_t,
     kernel_h(k_h), kernel_w(k_w), kernel_c(in_lyr.output_c),
     kernel_size(k_w * k_h * in_lyr.output_c), n_filters(n_f), stride(stri),
     padding(pad)
-#if defined (AIMC)
-    , use_aimc(u_a), aimc_h(-1), aimc_w(-1)
+#if defined (SA)
+    , use_sa(u_a), sa_size(SA_SIZE)
 #endif
 {
     args_type = CONV_ARGS_TYPE;
@@ -562,7 +562,7 @@ template<typename T>
 CONV_LAYER_ARGS::CONV_LAYER_ARGS(const int lyr, const int inf, const int thrd,
     buffer_t b_t, T & in_lyr, const int k_h, const int k_w, const int n_f,
     const int stri,
-#if defined (AIMC)
+#if defined (SA)
     bool u_a,
 #endif
     const int pad, norm_ops_t norm, act_ops_t act) :
@@ -574,8 +574,8 @@ CONV_LAYER_ARGS::CONV_LAYER_ARGS(const int lyr, const int inf, const int thrd,
     kernel_h(k_h), kernel_w(k_w), kernel_c(in_lyr.output_c),
     kernel_size(k_w * k_h * in_lyr.output_c), n_filters(n_f), stride(stri),
     padding(pad)
-#if defined (AIMC)
-    , use_aimc(u_a), aimc_h(-1), aimc_w(-1)
+#if defined (SA)
+    , use_sa(u_a), sa_size(SA_SIZE)
 #endif
 {
     args_type = CONV_ARGS_TYPE;
@@ -590,7 +590,7 @@ CONV_LAYER_ARGS::CONV_LAYER_ARGS(const int lyr, const int inf, const int thrd,
 template<typename T>
 FC_LAYER_ARGS::FC_LAYER_ARGS(const int lyr, const int inf, buffer_t b_t,
     T & in_lyr,
-#if defined (AIMC)
+#if defined (SA)
     bool u_a,
 #endif
     const int out_s, norm_ops_t norm, act_ops_t act) :
@@ -598,8 +598,8 @@ FC_LAYER_ARGS::FC_LAYER_ARGS(const int lyr, const int inf, buffer_t b_t,
     LAYER_ARG_1D_IN(inf, false, in_lyr.output_size),
     LAYER_ARG_1D_OUT(inf, false, out_s, norm, act),
     weights_h(in_lyr.output_size), weights_w(out_s)
-#if defined (AIMC)
-    , use_aimc(u_a), aimc_h(-1), aimc_w(-1)
+#if defined (SA)
+    , use_sa(u_a), sa_size(SA_SIZE)
 #endif
 {
     args_type = FC_ARGS_TYPE;
@@ -613,7 +613,7 @@ FC_LAYER_ARGS::FC_LAYER_ARGS(const int lyr, const int inf, buffer_t b_t,
 template<typename T>
 FC_LAYER_ARGS::FC_LAYER_ARGS(const int lyr, const int inf, const int thrd,
     buffer_t b_t, T & in_lyr,
-#if defined (AIMC)
+#if defined (SA)
     bool u_a,
 #endif
     const int out_s, norm_ops_t norm, act_ops_t act) :
@@ -622,8 +622,8 @@ FC_LAYER_ARGS::FC_LAYER_ARGS(const int lyr, const int inf, const int thrd,
     LAYER_ARG_1D_OUT(inf, false, out_s, norm, act),
     weights_h(in_lyr.output_size),
     weights_w(out_s)
-#if defined (AIMC)
-    , use_aimc(u_a), aimc_h(-1), aimc_w(-1)
+#if defined (SA)
+    , use_sa(u_a), sa_size(SA_SIZE)
 #endif
 {
     args_type = FC_ARGS_TYPE;

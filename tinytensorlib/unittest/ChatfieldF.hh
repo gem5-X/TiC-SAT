@@ -30,10 +30,9 @@ conv_layer_args conv1 = conv_layer_args(
         11,                 // Kernel width.
         64,                 // Number of filters.
         4,                  // Stride.
-#if defined (AIMC)
-true,               // Are we using AIMC tiles?
--1,                 // Allocated tile height? (-1 = infinite)
--1,                 // Allocated tile width? (-1 = infinite)
+#if defined (SA)
+false,               // Are we using SA tiles?
+SA_SIZE,                 // Allocated tile height? (-1 = infinite)
 #endif
 0,                  // Padding.
 LRN_NORM_TYPE,      // Normalization.
@@ -62,8 +61,8 @@ conv_layer_args conv2 = conv_layer_args(
         5,                  // Kernel width.
         256,                // Number of filters.
         1,                  // Stride.
-#if defined (AIMC)
-true,               // Are we using AIMC tiles?
+#if defined (SA)
+true,               // Are we using SA tiles?
 #endif
 2,                  // Padding.
 LRN_NORM_TYPE,      // Normalization.
@@ -92,8 +91,8 @@ conv_layer_args conv3 = conv_layer_args(
         3,                  // Kernel width.
         256,                // Number of filters.
         1,                  // Stride.
-#if defined (AIMC)
-true,               // Are we using AIMC tiles?
+#if defined (SA)
+true,               // Are we using SA tiles?
 #endif
 1,                  // Padding.
 NO_NORM_TYPE,       // Normalization.
@@ -109,8 +108,8 @@ conv_layer_args conv4 = conv_layer_args(
         3,                  // Kernel width.
         256,                // Number of filters.
         1,                  // Stride.
-#if defined (AIMC)
-true,               // Are we using AIMC tiles?
+#if defined (SA)
+true,               // Are we using SA tiles?
 #endif
 1,                  // Padding.
 NO_NORM_TYPE,       // Normalization.
@@ -126,8 +125,8 @@ conv_layer_args conv5 = conv_layer_args(
         3,                  // Kernel width.
         256,                // Number of filters.
         1,                  // Stride.
-#if defined (AIMC)
-true,               // Are we using AIMC tiles?
+#if defined (SA)
+true,               // Are we using SA tiles?
 #endif
 1,                  // Padding.
 NO_NORM_TYPE,       // Normalization.
@@ -159,8 +158,8 @@ fc_layer_args dense1 = fc_layer_args(
         T_x,                // Number of inferences.
         SINGLE_BUFFER_TYPE, // Buffer type.
         flatten1,           // Input layer.
-#if defined (AIMC)
-false,              // Are we using AIMC tiles?
+#if defined (SA)
+        false,              // Are we using SA tiles?
 #endif
 4096,               // Output size.
 NO_NORM_TYPE,       // Normalization.
@@ -172,8 +171,8 @@ fc_layer_args dense2 = fc_layer_args(
         T_x,                // Number of inferences.
         SINGLE_BUFFER_TYPE, // Buffer type.
         dense1,             // Input layer.
-#if defined (AIMC)
-false,              // Are we using AIMC tiles?
+#if defined (SA)
+        false,              // Are we using SA tiles?
 #endif
 4096,               // Output size.
 NO_NORM_TYPE,       // Normalization.
@@ -188,10 +187,9 @@ fc_layer_args dense3 = fc_layer_args(
         true,               // Is last layer.
         SINGLE_BUFFER_TYPE, // Buffer type.
         dense2.output_size, // Input size.
-#if defined (AIMC)
-false,              // Are we using AIMC tiles?
--1,                 // Allocated tile height? (-1 = infinite)
--1,                 // Allocated tile width? (-1 = infinite)
+#if defined (SA)
+        false,              // Are we using SA tiles?
+SA_SIZE,
 #endif
 1000,               // Output size.
 NO_NORM_TYPE,       // Normalization.

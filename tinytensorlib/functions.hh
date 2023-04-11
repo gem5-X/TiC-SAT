@@ -42,7 +42,7 @@ Convolution2D(conv_layer_args *args, TB_Matrix3D &input,
     if (args->use_sa) {
         // Case 1: kernel dimensions are multiples of the systolic array dimensions
         if ((args->kernel_size % args->sa_size == 0) &&
-            args->n_filters % args->sa_size == 0) {
+            (args->n_filters % args->sa_size == 0)) {
 
             std::cout << "Case 1 Conv " << patches.dimensions() << " X " << kernels.dimensions() << std::endl;
             smmComputeEigen(patches.dimension(0),
@@ -192,123 +192,120 @@ Convolution2D(conv_layer_args *args, TB_Matrix3D &input,
 inline void
 FullyConnected(fc_layer_args *args, TB_Vector &input,
                TB_Vector &output) {
-#if defined (AIMC)
+#if defined (SA)
+    // Set up dimensions array and input for MVM.
+    Eigen::array<Eigen::IndexPair<int>, 1> product_dims =
+            {Eigen::IndexPair<int>(1, 0)};
+
+    // Do fully digital MVM.
+    TB_Matrix2D res = input.reshape(
+            Eigen::array<Eigen::Index, 2>{1, args->weights_h});
+
     // Are we doing a whole MVM or only a partial MVM?
     if (args->use_sa) {
-        // Case 1: Weights fit entirely in AIMC tile.
-        if ((args->aimc_h < 0 && args->aimc_w < 0) ||
-            (args->aimc_h >= args->input_size &&
-                args->aimc_w >= args->output_size)) {
-            // Queue input.
-            queueVector(args->input_size, input);
-
-            // Perform MVM.
-            aimcProcess();
-
-            // Dequeue output.
-            dequeueVector(args->output_size, output);
+        // Case 1: kernel dimensions are multiples of the systolic array dimensions
+        if ((args->input_size % args->sa_size == 0) &&
+        (args->output_size % args->sa_size == 0)) {
+            smmComputeEigen(res.dimension(0),
+                            res.data(),
+                            output.data(),
+                            (args->weights).data(),
+                            res.dimension(1),
+                            (args->weights).dimension(1));
+            std::cout << "Case 1 FC " << res.dimensions() << " X " << (args->weights).dimensions()  << std::endl;
         }
-        // Case 2: AIMC tile height < weights matrix height.
-        else if (args->aimc_w >= args->output_size) {
-            // Queue partial input.
-            queueVector(args->aimc_h, input);
+        // Case 2: kernel size is not a multiple of SA_SIZE
+        else if (args->output_size % args->sa_size == 0) {
+            smmComputeEigen(res.dimension(0),
+                            res.data(),
+                            output.data(),
+                            (args->weights).data(),
+                            res.dimension(1),
+                            (args->weights).dimension(1));
 
-            // Perform MVM.
-            aimcProcess();
+            const int multiple_sa_size = args->input_size - (args->input_size % args->sa_size);
+            std::cout << "Case 2 FC " << res.dimensions() << " X " << (args->weights).dimensions()  <<
+            " Size " << multiple_sa_size << std::endl;
 
-            // Dequeue partial output.
-            dequeueVector(args->output_size, output);
-
-            // Set up dimensions and do partial MVM.
-            Eigen::array<Eigen::IndexPair<int>, 1> product_dims =
-                {Eigen::IndexPair<int>(1, 0)};
 
             output += input
                 .reshape(Eigen::array<Eigen::Index, 2>{1, args->input_size})
-                .slice(Eigen::array<Eigen::Index, 2>{0, args->aimc_h},
-                    Eigen::array<Eigen::Index, 2>{1, args->input_size - args->aimc_h})
+                .slice(Eigen::array<Eigen::Index, 2>{0, multiple_sa_size},
+                    Eigen::array<Eigen::Index, 2>{1, args->input_size - multiple_sa_size})
                 .contract(args->weights.slice(
-                    Eigen::array<Eigen::Index, 2>{args->aimc_h, 0},
-                    Eigen::array<Eigen::Index, 2>{args->input_size - args->aimc_h, args->output_size}
+                    Eigen::array<Eigen::Index, 2>{multiple_sa_size, 0},
+                    Eigen::array<Eigen::Index, 2>{args->input_size - multiple_sa_size, args->output_size}
                 ), product_dims)
                 .reshape(output.dimensions());
         }
-        // Case 3: AIMC tile width < weights matrix width.
-        else if (args->aimc_h >= args->input_size) {
-            // Queue partial input.
-            queueVector(args->input_size, input);
+        // Case 3: output size is not a multiple of SA_SIZE
+        else if (args->input_size % args->sa_size == 0){
+            smmComputeEigen(res.dimension(0),
+                            res.data(),
+                            output.data(),
+                            (args->weights).data(),
+                            res.dimension(1),
+                            (args->weights).dimension(1));
 
-            // Perform MVM.
-            aimcProcess();
-
-            // Dequeue partial output.
-            dequeueVector(args->aimc_w, output);
-
-            // Set up dimensions and do partial MVM.
-            Eigen::array<Eigen::IndexPair<int>, 1> product_dims =
-                {Eigen::IndexPair<int>(1, 0)};
+            const int multiple_sa_size = args->output_size - (args->output_size % args->sa_size);
+            std::cout << "Case 3 FC " << res.dimensions() << " X " << (args->weights).dimensions()  <<
+            " Size " << multiple_sa_size << std::endl;
 
             output.slice(
-                Eigen::array<Eigen::Index, 1>{args->aimc_w},
-                Eigen::array<Eigen::Index, 1>{args->output_size - args->aimc_w}
+                    Eigen::array<Eigen::Index, 1>{multiple_sa_size},
+                    Eigen::array<Eigen::Index, 1>{args->output_size - multiple_sa_size}
             ) += input
                 .reshape(Eigen::array<Eigen::Index, 2>{1, args->input_size})
                 .contract(args->weights.slice(
-                    Eigen::array<Eigen::Index, 2>{0, args->aimc_w},
-                    Eigen::array<Eigen::Index, 2>{args->input_size, args->output_size - args->aimc_w}
+                        Eigen::array<Eigen::Index, 2>{0, multiple_sa_size},
+                        Eigen::array<Eigen::Index, 2>{args->input_size, args->output_size - multiple_sa_size}
                 ), product_dims)
-                .reshape(Eigen::array<DenseIndex, 1>({args->output_size - args->aimc_w}));
+                .reshape(Eigen::array<DenseIndex, 1>({args->output_size - multiple_sa_size}));
         }
-        // Case 4: AIMC tile doesn't fit both kernel height and # of kernels.
+        // Case 4: SA tile doesn't fit both kernel height and # of kernels.
         else {
-            // Queue partial input.
-            queueVector(args->aimc_h, input);
+            smmComputeEigen(res.dimension(0),
+                            res.data(),
+                            output.data(),
+                            (args->weights).data(),
+                            res.dimension(1),
+                            (args->weights).dimension(1));
 
-            // Perform MVM.
-            aimcProcess();
-
-            // Dequeue partial output.
-            dequeueVector(args->aimc_w, output);
+            const int multiple_sa_size_input = args->input_size - (args->input_size % args->sa_size);
+            const int multiple_sa_size_output = args->output_size - (args->output_size % args->sa_size);
+            std::cout << "Case 4 FC " << res.dimensions() << " X " << (args->weights).dimensions()  <<
+            " Size " << multiple_sa_size_input << " and " << multiple_sa_size_output << std::endl;
 
             // Set up dimensions and do partial MVM, bottom left first then
             // right portion.
-            Eigen::array<Eigen::IndexPair<int>, 1> product_dims =
-                {Eigen::IndexPair<int>(1, 0)};
 
             // Perform right-portion digital partial MVM.
             output.slice(
-                Eigen::array<Eigen::Index, 1>{args->aimc_w},
-                Eigen::array<Eigen::Index, 1>{args->output_size - args->aimc_w}
+                Eigen::array<Eigen::Index, 1>{multiple_sa_size_output},
+                Eigen::array<Eigen::Index, 1>{args->output_size - multiple_sa_size_output}
             ) += input
                 .reshape(Eigen::array<Eigen::Index, 2>{1, args->input_size})
                 .contract(args->weights.slice(
-                    Eigen::array<Eigen::Index, 2>{0, args->aimc_w},
-                    Eigen::array<Eigen::Index, 2>{args->input_size, args->output_size - args->aimc_w}
+                        Eigen::array<Eigen::Index, 2>{0, multiple_sa_size_output},
+                        Eigen::array<Eigen::Index, 2>{args->input_size, args->output_size - multiple_sa_size_output}
                 ), product_dims)
-                .reshape(Eigen::array<DenseIndex, 1>({args->output_size - args->aimc_w}));
+                .reshape(Eigen::array<DenseIndex, 1>({args->output_size - multiple_sa_size_output}));
 
             // Perform left-bottom-portion digital partial MVM.
             output.slice(
                 Eigen::array<Eigen::Index, 1>{0},
-                Eigen::array<Eigen::Index, 1>{args->aimc_w}
+                Eigen::array<Eigen::Index, 1>{multiple_sa_size_output}
             ) += input
                 .reshape(Eigen::array<Eigen::Index, 2>{1, args->input_size})
-                .slice(Eigen::array<Eigen::Index, 2>{0, args->aimc_h},
-                    Eigen::array<Eigen::Index, 2>{1, args->input_size - args->aimc_h})
+                .slice(Eigen::array<Eigen::Index, 2>{0, multiple_sa_size_input},
+                       Eigen::array<Eigen::Index, 2>{1, args->input_size - multiple_sa_size_input})
                 .contract(args->weights.slice(
-                    Eigen::array<Eigen::Index, 2>{args->aimc_h, 0},
-                    Eigen::array<Eigen::Index, 2>{args->input_size - args->aimc_h, args->aimc_w}
+                        Eigen::array<Eigen::Index, 2>{multiple_sa_size_input, 0},
+                        Eigen::array<Eigen::Index, 2>{args->input_size - multiple_sa_size_input, multiple_sa_size_output}
                 ), product_dims)
-                .reshape(Eigen::array<DenseIndex, 1>({args->aimc_w}));
+                .reshape(Eigen::array<DenseIndex, 1>({multiple_sa_size_output}));
         }
     } else {
-        // Set up dimensions array and input for MVM.
-        Eigen::array<Eigen::IndexPair<int>, 1> product_dims =
-            {Eigen::IndexPair<int>(1, 0)};
-
-        // Do fully digital MVM.
-        TB_Matrix2D res = input.reshape(
-            Eigen::array<Eigen::Index, 2>{1, args->weights_h});
         output = res.contract(args->weights, product_dims)
             .reshape(output.dimensions());
     }
