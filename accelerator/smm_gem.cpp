@@ -2,13 +2,12 @@
 // Created by alireza on 3/3/22.
 //
 
-#include <cstdint>
 #include "iostream"
 #include "smm_gem.h"
 #include <cmath>
 
 #define W_DATA 4
-#define KERNEL_SIZE SA_SIZE
+#define KERNEL_DIM SA_SIZE
 #define MAX_COL SA_SIZE/W_DATA
 #define mem2d(data, data_len, row, col)   data[((row)*(data_len))+(col)]
 

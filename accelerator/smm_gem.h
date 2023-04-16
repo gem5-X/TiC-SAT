@@ -5,6 +5,9 @@
 #ifndef FVLLMONTITRANSFORMER_SMM_GEM_H
 #define FVLLMONTITRANSFORMER_SMM_GEM_H
 
+#include <cstddef>
+#include <cstdint>
+
 void conventionalCompute(std::size_t seq_len, const uint32_t * input, uint32_t * output, uint32_t *weight,
                          std::size_t input_size_, std::size_t output_size_);
 

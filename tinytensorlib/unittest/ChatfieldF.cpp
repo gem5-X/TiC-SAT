@@ -9,9 +9,11 @@
  */
 
 #include <iostream>
-
+#include "../../taskflow/taskflow/algorithm/pipeline.hpp"
+#include "../../taskflow/taskflow/taskflow.hpp"
 #include "../tinytensorlib.hh"
 #include "ChatfieldF.hh"
+#include "Chatfield_layers.hh"
 
 using namespace std;
 
@@ -22,7 +24,7 @@ main(int argc, char * argv[])
     // Initialize buffers and other vars.
     int sys_info = 0;
 
-    generateSingleOutputDataStructure(conv1);
+    generatePingPongOutputDataStructure(conv1);
     printLayerInfo(&conv1);
     
     connectLayers(pool1, conv1);
@@ -40,28 +42,100 @@ main(int argc, char * argv[])
     printLayerInfo(&dense3);
 
     // Do inference.
-    sys_info += system("m5 resetstats");
-    for (int inf = 0; inf < T_x; inf++)
-    {   
-        cout << "Inference " << inf << endl;
-        doLayer(conv1, inf, 0);
-        doLayer(pool1);
+    cout << "Starting inference...\n";
+    unsigned int idx_arr[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    unsigned int inf_in = 0;
+    unsigned int inf_out = 0;
 
-        doLayer(conv2);
-        doLayer(pool2);
+    tf::Executor executor(8);
+    tf::Taskflow taskflow;
 
-        doLayer(conv3);
-        doLayer(conv4);
-        doLayer(conv5);
-        doLayer(pool3);
-        doLayer(flatten1);
-        doLayer(dense1);
-        doLayer(dense2);
-        doLayer(dense3, 0, inf);
+    tf::Pipeline pl(8, // Maximum level of parallelism, a.k.a., number of threads.
+                    // Thread 0 pipe.
+                    tf::Pipe{
+        tf::PipeType::SERIAL,
+        [&idx_arr, &inf_in] (tf::Pipeflow & pf) {
+            if (inf_in == warmup_infs) {
+                system("m5 resetstats");
+            }
+
+            // Stop pipeline if all inferences performed.
+            if (pf.token() == T_x) {
+                pf.stop();
+            } else {
+                thread0Work(idx_arr[0], inf_in);
+                idx_arr[0] = (idx_arr[0] + 1) % 2;
+                inf_in++;
+            }
+        }
+        },
+        // Thread 1 pipe.
+        tf::Pipe{
+        tf::PipeType::PARALLEL,
+        [&idx_arr] (tf::Pipeflow & pf) {
+            thread1Work(idx_arr[1]);
+            idx_arr[1] = (idx_arr[1] + 1) % 2;
+        }
+        },
+        // Thread 2 pipe.
+        tf::Pipe{
+        tf::PipeType::PARALLEL,
+        [&idx_arr] (tf::Pipeflow & pf) {
+            thread2Work(idx_arr[2]);
+            idx_arr[2] = (idx_arr[2] + 1) % 2;
+        }
+        },
+        // Thread 3 pipe.
+        tf::Pipe{
+        tf::PipeType::PARALLEL,
+        [&idx_arr] (tf::Pipeflow & pf) {
+            thread3Work(idx_arr[3]);
+            idx_arr[3] = (idx_arr[3] + 1) % 2;
+        }
+        },
+        // Thread 4 pipe.
+        tf::Pipe{
+        tf::PipeType::PARALLEL,
+        [&idx_arr] (tf::Pipeflow & pf) {
+            thread4Work(idx_arr[4]);
+            idx_arr[4] = (idx_arr[4] + 1) % 2;
+        }
+        },
+        // Thread 5 pipe.
+        tf::Pipe{
+        tf::PipeType::PARALLEL,
+        [&idx_arr] (tf::Pipeflow & pf) {
+            thread5Work(idx_arr[5]);
+            idx_arr[5] = (idx_arr[5] + 1) % 2;
+        }
+        },
+        // Thread 6 pipe.
+        tf::Pipe{
+        tf::PipeType::PARALLEL,
+        [&idx_arr] (tf::Pipeflow & pf) {
+            thread6Work(idx_arr[6]);
+            idx_arr[6] = (idx_arr[6] + 1) % 2;
+        }
+        },
+        // Thread 7 pipe.
+        tf::Pipe{
+        tf::PipeType::PARALLEL,
+        [&idx_arr, &inf_out] (tf::Pipeflow & pf) {
+            thread7Work(idx_arr[7], inf_out);
+            idx_arr[7] = (idx_arr[7] + 1) % 2;
+            inf_out++;
+            cout << "Finished Inference " << inf_out << "!\n";
+
+            if (inf_out == warmup_infs + roi_infs) {
+                system("m5 exit");
+            }
+        }
     }
+    );
 
-    // Finish and clean up.
-    sys_info += system("m5 exit");
+    tf::Task pipeline = taskflow.composed_of(pl);
+    executor.run_n(taskflow, T_x);
+    executor.wait_for_all();
 
     printVector(dense3.output[T_x-1], 5);
 

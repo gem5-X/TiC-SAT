@@ -31,6 +31,9 @@
 #ifndef __SYSTOLIC_M2M_H__
 #define __SYSTOLIC_M2M_H__
 
+#include <cstddef>
+#include <cstdint>
+
 #define KERNEL_DIM SA_SIZE
 #define W_DATA 4
 #define MAX_COL SA_SIZE/W_DATA
