@@ -12,8 +12,8 @@
 #define __CHATFIELDF_HH__
 
 // Number of inferences.
-const int warmup_infs = 0;//11;
-const int roi_infs = 3;//10;
+const int warmup_infs = 11;
+const int roi_infs = 10;
 const int cooldown_infs = warmup_infs;
 const int T_x = warmup_infs + roi_infs + cooldown_infs;
 int layer_num = 0;

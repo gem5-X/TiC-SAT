@@ -9,8 +9,6 @@
  */
 
 #include <iostream>
-#include "../../taskflow/taskflow/algorithm/pipeline.hpp"
-#include "../../taskflow/taskflow/taskflow.hpp"
 #include "../tinytensorlib.hh"
 #include "ChatfieldF.hh"
 #include "Chatfield_layers.hh"
@@ -21,8 +19,12 @@ using namespace std;
 int
 main(int argc, char * argv[])
 {
-    // Initialize buffers and other vars.
-    int sys_info = 0;
+    // Initialize threading stuff.
+    pthread_t thread0, thread1, thread2, thread3, thread4, thread5, thread6,
+    thread7;
+    int n_threads = 8;
+    initSyncStructures(n_threads);
+
 
     generatePingPongOutputDataStructure(conv1);
     printLayerInfo(&conv1);
@@ -41,104 +43,45 @@ main(int argc, char * argv[])
     dense3.input = dense2.output;
     printLayerInfo(&dense3);
 
+    // Connect thread sync arrays.
+    connectSyncStructures(conv1, conv1.thread_n);
+    connectSyncStructures(pool1, pool1.thread_n);
+    connectSyncStructures(conv2, conv2.thread_n);
+    connectSyncStructures(pool2, pool2.thread_n);
+    connectSyncStructures(conv3, conv3.thread_n);
+    connectSyncStructures(conv4, conv4.thread_n);
+    connectSyncStructures(conv5, conv5.thread_n);
+    connectSyncStructures(pool3, pool3.thread_n);
+    connectSyncStructures(flatten1, flatten1.thread_n);
+    connectSyncStructures(dense1, dense1.thread_n);
+    connectSyncStructures(dense2, dense2.thread_n);
+    connectSyncStructures(dense3, dense3.thread_n);
+
+
     // Do inference.
     cout << "Starting inference...\n";
-    unsigned int idx_arr[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-    unsigned int inf_in = 0;
-    unsigned int inf_out = 0;
+    pthread_create(&thread0, NULL, run_layer_thread0, NULL);
+    pthread_create(&thread1, NULL, run_layer_thread1, NULL);
+    pthread_create(&thread2, NULL, run_layer_thread2, NULL);
+    pthread_create(&thread3, NULL, run_layer_thread3, NULL);
+    pthread_create(&thread4, NULL, run_layer_thread4, NULL);
+    pthread_create(&thread5, NULL, run_layer_thread5, NULL);
+    pthread_create(&thread6, NULL, run_layer_thread6, NULL);
+    pthread_create(&thread7, NULL, run_layer_thread7, NULL);
 
-    tf::Executor executor(8);
-    tf::Taskflow taskflow;
+    pthread_join(thread0, NULL);
+    pthread_join(thread1, NULL);
+    pthread_join(thread2, NULL);
+    pthread_join(thread3, NULL);
+    pthread_join(thread4, NULL);
+    pthread_join(thread5, NULL);
+    pthread_join(thread6, NULL);
+    pthread_join(thread7, NULL);
 
-    tf::Pipeline pl(8, // Maximum level of parallelism, a.k.a., number of threads.
-                    // Thread 0 pipe.
-                    tf::Pipe{
-        tf::PipeType::SERIAL,
-        [&idx_arr, &inf_in] (tf::Pipeflow & pf) {
-            if (inf_in == warmup_infs) {
-                system("m5 resetstats");
-            }
+    // Finish and clean up.
+    printVector(dense3.output[T_x-1], 15);
 
-            // Stop pipeline if all inferences performed.
-            if (pf.token() == T_x) {
-                pf.stop();
-            } else {
-                thread0Work(idx_arr[0], inf_in);
-                idx_arr[0] = (idx_arr[0] + 1) % 2;
-                inf_in++;
-            }
-        }
-        },
-        // Thread 1 pipe.
-        tf::Pipe{
-        tf::PipeType::PARALLEL,
-        [&idx_arr] (tf::Pipeflow & pf) {
-            thread1Work(idx_arr[1]);
-            idx_arr[1] = (idx_arr[1] + 1) % 2;
-        }
-        },
-        // Thread 2 pipe.
-        tf::Pipe{
-        tf::PipeType::PARALLEL,
-        [&idx_arr] (tf::Pipeflow & pf) {
-            thread2Work(idx_arr[2]);
-            idx_arr[2] = (idx_arr[2] + 1) % 2;
-        }
-        },
-        // Thread 3 pipe.
-        tf::Pipe{
-        tf::PipeType::PARALLEL,
-        [&idx_arr] (tf::Pipeflow & pf) {
-            thread3Work(idx_arr[3]);
-            idx_arr[3] = (idx_arr[3] + 1) % 2;
-        }
-        },
-        // Thread 4 pipe.
-        tf::Pipe{
-        tf::PipeType::PARALLEL,
-        [&idx_arr] (tf::Pipeflow & pf) {
-            thread4Work(idx_arr[4]);
-            idx_arr[4] = (idx_arr[4] + 1) % 2;
-        }
-        },
-        // Thread 5 pipe.
-        tf::Pipe{
-        tf::PipeType::PARALLEL,
-        [&idx_arr] (tf::Pipeflow & pf) {
-            thread5Work(idx_arr[5]);
-            idx_arr[5] = (idx_arr[5] + 1) % 2;
-        }
-        },
-        // Thread 6 pipe.
-        tf::Pipe{
-        tf::PipeType::PARALLEL,
-        [&idx_arr] (tf::Pipeflow & pf) {
-            thread6Work(idx_arr[6]);
-            idx_arr[6] = (idx_arr[6] + 1) % 2;
-        }
-        },
-        // Thread 7 pipe.
-        tf::Pipe{
-        tf::PipeType::PARALLEL,
-        [&idx_arr, &inf_out] (tf::Pipeflow & pf) {
-            thread7Work(idx_arr[7], inf_out);
-            idx_arr[7] = (idx_arr[7] + 1) % 2;
-            inf_out++;
-            cout << "Finished Inference " << inf_out << "!\n";
-
-            if (inf_out == warmup_infs + roi_infs) {
-                system("m5 exit");
-            }
-        }
-    }
-    );
-
-    tf::Task pipeline = taskflow.composed_of(pl);
-    executor.run_n(taskflow, T_x);
-    executor.wait_for_all();
-
-    printVector(dense3.output[T_x-1], 5);
-
+    cleanSyncStructures();
     delete[] conv1.input;
     delete[] pool1.input;
     delete[] conv2.input;
