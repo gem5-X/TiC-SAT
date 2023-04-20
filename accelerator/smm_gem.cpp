@@ -8,7 +8,7 @@
 
 #define W_DATA 4
 #define KERNEL_DIM SA_SIZE
-#define MAX_COL SA_SIZE/W_DATA
+#define MAX_COL (SA_SIZE/W_DATA)
 #define mem2d(data, data_len, row, col)   data[((row)*(data_len))+(col)]
 
 
@@ -320,6 +320,7 @@ void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *
             const uint32_t *inPtr = input + base_col_idx;
             for (int i = 0; i < seq_len; i++) {
                 for (int j = 0; j < MAX_COL; j++) {
+                    uint32_t content = *(inPtr);
                     if (j == MAX_COL - 1) {
                         mult = smmStream(*(inPtr++));
                     } else {

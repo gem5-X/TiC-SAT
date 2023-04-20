@@ -36,7 +36,7 @@
 
 #define KERNEL_DIM SA_SIZE
 #define W_DATA 4
-#define MAX_COL SA_SIZE/W_DATA
+#define MAX_COL (SA_SIZE/W_DATA)
 
 #define mem2d(data,data_len,row,col)   data[((row)*(data_len))+(col)]
 
