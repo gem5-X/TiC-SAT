@@ -279,8 +279,8 @@ unsigned int *input_rearrangement(const uint32_t *inputs, std::size_t seq_len, s
 void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
                           uint32_t *flag, std::size_t input_size_, std::size_t output_size_, bool sparse) {
     uint8_t counter = 0;
-    for (int l2Row = 0; l2Row < input_size_ / KERNEL_DIM; l2Row++) {
-        for (int l2Col = 0; l2Col < output_size_ / KERNEL_DIM; l2Col++) {
+    for (int l2Col = 0; l2Col < output_size_ / KERNEL_DIM; l2Col++) {
+        for (int l2Row = 0; l2Row < input_size_ / KERNEL_DIM; l2Row++) {
             // Load the kernel with the corresponding weight
             int rowBlockSize = KERNEL_DIM;
             int colBlockSize = KERNEL_DIM / W_DATA;
