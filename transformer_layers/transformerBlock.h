@@ -21,7 +21,7 @@ public:
 private:
     std::size_t num_heads_;
     std::size_t head_hidden_size_;
-    std::size_t ff_size_;
+    std::size_t input_dim_;
     SingleHeadSelfAttn* selfatten[16];
     uint32_t* multihead_out;
     uint32_t* condense_out;
@@ -30,6 +30,10 @@ private:
     Dense* condense;
     Dense* feedForward0;
     Dense* feedForward1;
+
+#ifndef REARRANGE
+    uint32_t* multihead_out_reshape;
+#endif
 
 };
 

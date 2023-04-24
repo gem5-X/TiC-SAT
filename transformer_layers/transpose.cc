@@ -42,3 +42,16 @@ void Transpose::transpose_rearranged(uint32_t* input, uint32_t* output, std::siz
         }
     }
 }
+
+void Transpose::multihead_transpose(const uint32_t* input, uint32_t* output, std::size_t seq_len,
+                                    std::size_t head_hidden_size, std::size_t num_head) {
+    const uint32_t * initial_input = input;
+    for (int i=0; i < seq_len; i++){
+        for (int n=0; n< num_head; n++){
+            input = initial_input + i*head_hidden_size + n*seq_len*head_hidden_size;
+            for (int j=0; j < head_hidden_size; j++){
+                *output++ = *input++;
+            }
+        }
+    }
+}

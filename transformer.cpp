@@ -3,6 +3,7 @@
 #include "transformer.h"
 #include <fstream>
 #include <filesystem>
+#include "transformer_layers/debuggerFunctions.h"
 
 #define KERNEL_DIM SA_SIZE
 #define MAX_COL (SA_SIZE/4)
@@ -96,15 +97,6 @@ void loadWeight(int n_head, int qkv, int size, uint32_t * array,  int sparsity_l
 
 }
 
-void print_weight(uint32_t* kernel, int n_row, int n_col){
-    for (int i=0; i<n_row; i++){
-        for (int j=0; j<2; j++){
-            printf("%08x\t", kernel[i*n_col + j]);
-        }
-        printf("\n");
-    }
-}
-
 
 void test(int sparsity_percentage){
     std::cout<<"First line" << std::endl;
@@ -116,7 +108,7 @@ void test(int sparsity_percentage){
 
     std::string dir_name = "data";
 
-    uint32_t tensor_in[D_SEQ * D_MODEL >> 2];
+    uint32_t* tensor_in = new uint32_t [D_SEQ * D_MODEL >> 2];
     #ifdef RELOAD_WEIGHT
         loadWeight(-1, -1, D_SEQ * D_MODEL >> 2, tensor_in, 0, dir_name);
     #else
@@ -124,8 +116,14 @@ void test(int sparsity_percentage){
         saveWeight(-1, -1, D_SEQ * D_MODEL >> 2, tensor_in, 0, dir_name);
     #endif
 
+#ifndef REARRANGE
+        uint32_t tensorInRowWise[D_SEQ * D_MODEL >> 2];
+        blockWise2RowWise(tensor_in, tensorInRowWise, D_SEQ, D_MODEL >> 2);
+        tensor_in = tensorInRowWise;
+#endif
 
-    uint32_t out[D_SEQ*D_MODEL >> 2];
+
+    uint32_t* out = new uint32_t [D_SEQ*D_MODEL >> 2]();
 
     uint32_t * weightVec[3*NUM_HEAD+3];
     uint32_t * flagVec[3*NUM_HEAD+3];
@@ -166,6 +164,48 @@ void test(int sparsity_percentage){
         saveWeight(n, 11, head_flag_size, key_flag, sparsity_percentage, dir_name);
         saveWeight(n, 12, head_flag_size, value_flag, sparsity_percentage, dir_name);
 #endif
+
+#ifndef REARRANGE
+    uint32_t* queryRowWise = new uint32_t [D_MODEL * D_Q >> 2];
+    blockWise2RowWise(query_kernel, queryRowWise, D_MODEL, D_Q >> 2);
+    query_kernel = queryRowWise;
+    uint32_t* keyRowWise = new uint32_t [D_MODEL * D_Q >> 2];
+    blockWise2RowWise(key_kernel, keyRowWise, D_MODEL, D_Q >> 2);
+    key_kernel = keyRowWise;
+    uint32_t* valueRowWise = new uint32_t [D_MODEL * D_Q >> 2];
+    blockWise2RowWise(value_kernel, valueRowWise, D_MODEL, D_Q >> 2);
+    value_kernel = valueRowWise;
+#endif
+//        uint32_t tensorInRowWise[D_SEQ * D_MODEL >> 2];
+//        uint32_t queryWeightRowWise[D_MODEL * D_Q >> 2];
+//        uint32_t queryRowWiseFromBlock[D_SEQ * D_Q >> 2];
+//        auto queryResultRowWise = new uint32_t [D_SEQ* D_Q >> 2]();
+//        auto queryBlockWise = new uint32_t [D_SEQ* D_Q >> 2]();
+//
+//        blockWise2RowWise(value_kernel, queryWeightRowWise, D_MODEL, D_Q >> 2);
+//        blockWise2RowWise(tensor_in, tensorInRowWise, D_SEQ, D_MODEL >> 2);
+//
+////        conventionalCompute(D_SEQ, tensorInRowWise,queryRowWise, queryWeightRowWise, D_MODEL, D_Q);
+//        smmCompute(D_SEQ, tensorInRowWise,queryResultRowWise, queryWeightRowWise, nullptr, D_MODEL, D_Q, false);
+//        smmComputeRearranged(D_SEQ, tensor_in,queryBlockWise, value_kernel, nullptr, D_MODEL, D_Q, false);
+//
+//        blockWise2RowWise(queryBlockWise, queryRowWiseFromBlock, D_SEQ, D_Q >> 2);
+//
+//        std::cout<< "Input " << std::endl;
+//        print_weight(tensor_in, D_SEQ, D_MODEL>>2);
+//        std::cout<< "tensor in" << std::endl;
+//        print_weight(tensorInRowWise, D_SEQ, D_MODEL>>2);
+//        std::cout<< "Block Wise" << std::endl;
+//        print_weight(queryBlockWise, D_SEQ, D_Q>>2);
+//        std::cout<< "Row Wise" << std::endl;
+//        print_weight(queryResultRowWise, D_SEQ, D_Q >> 2);
+//
+//        uint32_t error = 0;
+//        for (int elem =0; elem < D_SEQ*D_Q >>2 ; elem++){
+//            error += (queryResultRowWise[elem] - queryRowWiseFromBlock[elem]);
+//        }
+//        std::cout<< "ERROR : " << error << std::endl;
+
 //        print_weight(query_kernel, (D_MODEL * D_Q >> 2) / (KERNEL_DIM* MAX_COL), KERNEL_DIM *MAX_COL);
         weightVec[n*3] = query_kernel;
         flagVec[n*3] = query_flag;
@@ -211,6 +251,18 @@ void test(int sparsity_percentage){
         saveWeight(n, 12, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff1_flag, sparsity_percentage, dir_name);
     #endif
 
+    #ifndef REARRANGE
+        uint32_t* condenseRowWise = new uint32_t [NUM_HEAD * D_Q * D_MODEL >> 2];
+        blockWise2RowWise(condense_kernel, condenseRowWise, NUM_HEAD * D_Q, D_MODEL >> 2);
+        condense_kernel = condenseRowWise;
+        uint32_t* ff0RowWise = new uint32_t [D_MODEL * D_FF >> 2];
+        blockWise2RowWise(ff0_kernel, ff0RowWise, D_MODEL, D_FF >> 2);
+        ff0_kernel = ff0RowWise;
+        uint32_t* ff1RowWise = new uint32_t [D_FF * D_MODEL >> 2];
+        blockWise2RowWise(ff1_kernel, ff1RowWise, D_FF, D_MODEL >> 2);
+        ff1_kernel = ff1RowWise;
+    #endif
+
     weightVec[NUM_HEAD*3] = condense_kernel;
     flagVec[NUM_HEAD*3] = condense_flag;
 
@@ -222,7 +274,6 @@ void test(int sparsity_percentage){
 
     TransformerBlock selfatten(D_SEQ, D_MODEL, D_Q, NUM_HEAD, D_FF, weightVec, flagVec, KERNEL_DIM, MAX_COL);
     selfatten.compute(D_SEQ, tensor_in, out);
-    print_weight(out, 5, D_MODEL/4);
 }
 
 int main() {

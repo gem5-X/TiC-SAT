@@ -159,25 +159,25 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                     int rowBlockSize = KERNEL_DIM;
                                     int colBlockSize = KERNEL_DIM / W_DATA;
                                     uint32_t *wPtr = weights + rowStart * (output_size_ / W_DATA);
-                                    if (sparse) {
-                                        if (*(flag_ptr + rowStart * output_size_ / (KERNEL_DIM * KERNEL_DIM) +
-                                              colStart / MAX_COL)) {
-                                            continue;
-                                        }
-                                    }
+//                                    if (sparse) {
+//                                        if (*(flag_ptr + rowStart * output_size_ / (KERNEL_DIM * KERNEL_DIM) +
+//                                              colStart / MAX_COL)) {
+//                                            continue;
+//                                        }
+//                                    }
 
-//                                    bool non_zero_tile = false;
+                                    bool non_zero_tile = false;
                                     for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
                                         for (int j = colStart; j < colStart + colBlockSize; j++) {
                                             uint32_t weight = *(wPtr + j);
                                             smmParamWrite(i - rowStart, j - colStart, weight);
-//                                            non_zero_tile += (weight != 0x0);
+                                            non_zero_tile += (weight != 0x0);
                                         }
                                         wPtr += output_size_ / W_DATA;
                                     }
-//                                    if (!non_zero_tile && sparse) {
-//                                        continue;
-//                                    }
+                                    if (!non_zero_tile && sparse) {
+                                        continue;
+                                    }
 
                                     // Process the multiplication
                                     int base_col_idx = (l2Row * rowMaxL2 * rowMaxL1 + tileRow) * MAX_COL;
