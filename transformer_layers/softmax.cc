@@ -1,5 +1,6 @@
 #include "softmax.h"
 #include <cmath>
+#include <iostream>
 
 static const  uint8_t  lookup[32] = {
         4, 5, 7, 8, 11, 14, 18, 23, 30, 38, 49, 63, 80, 103, 132, 170, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 3,
@@ -65,3 +66,70 @@ void Softmax::post_softmax(uint32_t *input, std::size_t seq_len, std::size_t hea
         input_ptr++;
     }
 }
+
+
+void Softmax::computeFloat(uint32_t *in_matrix, std::size_t seq_len) {
+    int32_t fractional_bits = 16;
+
+    // Split the input uint32_t array into int8_t values
+    std::vector<int8_t> input_int8(seq_len);
+    for (std::size_t i = 0; i < seq_len / 4; ++i) {
+        uint32_t value = in_matrix[i];
+        for (int j = 0; j < 4; ++j) {
+            input_int8[i * 4 + j] = static_cast<int8_t>((value >> (8 * j)) & 0xFF);
+        }
+    }
+
+    // Convert int8_t values into fixed-point representation
+    std::vector<int32_t> input_fixed(seq_len);
+    for (std::size_t i = 0; i < seq_len; ++i) {
+        input_fixed[i] = float_to_fixed(static_cast<float>(input_int8[i]), fractional_bits);
+    }
+
+    // Calculate the softmax for each chunk using fixed-point arithmetic
+    softmax_fixed(input_fixed, fractional_bits);
+
+    // (Optional) Convert the fixed-point result back to floating-point representation
+    std::vector<float> result(seq_len);
+    for (std::size_t i = 0; i < seq_len; ++i) {
+        result[i] = fixed_to_float(input_fixed[i], fractional_bits);
+        std::cout << "result[" << i << "]: " << result[i] << std::endl;
+    }
+}
+
+int32_t Softmax::float_to_fixed(float value, int32_t fractional_bits) {
+    return static_cast<int32_t>(round(value * (1 << fractional_bits)));
+}
+
+float Softmax::fixed_to_float(int32_t fixed_value, int32_t fractional_bits) {
+    return static_cast<float>(fixed_value) / (1 << fractional_bits);
+}
+
+void Softmax::softmax_fixed(std::vector<int32_t> &input, int32_t fractional_bits) {
+    std::size_t chunk_size = input.size() / 4;
+
+    for (std::size_t i = 0; i < 4; ++i) {
+        int32_t max_val = input[i * chunk_size];
+
+        // Find the maximum value in the chunk
+        for (std::size_t j = i * chunk_size + 1; j < (i + 1) * chunk_size; ++j) {
+            if (input[j] > max_val) {
+                max_val = input[j];
+            }
+        }
+
+        int32_t sum_exp = 0;
+        for (std::size_t j = i * chunk_size; j < (i + 1) * chunk_size; ++j) {
+            // Subtract max_val and exponentiate using fixed-point arithmetic
+            int32_t exp_val = float_to_fixed(exp(fixed_to_float(input[j] - max_val, fractional_bits)), fractional_bits);
+            input[j] = exp_val;
+            sum_exp += exp_val;
+        }
+
+        // Normalize the values in the chunk by dividing by the sum of exponentiated values
+        for (std::size_t j = i * chunk_size; j < (i + 1) * chunk_size; ++j) {
+            input[j] = (input[j] << fractional_bits) / sum_exp;
+        }
+    }
+}
+

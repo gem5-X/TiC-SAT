@@ -1,6 +1,7 @@
 //
 // Created by alireza on 4/24/23.
 //
+#define MAX_COL (SA_SIZE/4)
 
 #include "debuggerFunctions.h"
 
@@ -15,13 +16,13 @@ void print_weight(uint32_t* kernel, int n_row, int n_col){
 
 void blockWise2RowWise(const uint32_t * blockWise, uint32_t* rowWise, int n_row, int n_col){
     uint32_t* initialRowWise = rowWise;
-    for (int col=0; col<n_col/2; col++){
-        rowWise = initialRowWise + col * 2;
+    for (int col=0; col<n_col/MAX_COL; col++){
+        rowWise = initialRowWise + col * MAX_COL;
         for (int row=0; row < n_row; row++){
-            for (int i=0; i<2; i++){
+            for (int i=0; i<MAX_COL; i++){
                 *(rowWise + i) = *(blockWise+ i);
             }
-            blockWise += 2;
+            blockWise += MAX_COL;
             rowWise += n_col;
         }
     }

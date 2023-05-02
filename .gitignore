@@ -28,5 +28,7 @@ gem5-X-TiCSAT/system/arm/simple_bootloader/*.o
 gem5-X-TiCSAT/system/arm/simple_bootloader/boot.arm
 gem5-X-TiCSAT/system/arm/simple_bootloader/boot_emm.arm
 gem5-X-TiCSAT/system/arm/aarch64_bootloader/boot_emm.arm64
-
+data*
+taskflow
+gem5.pem
 

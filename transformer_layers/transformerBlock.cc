@@ -48,7 +48,6 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
         std::cout << "Head : " << n << std::endl;
         selfatten[n]->compute(seq_len, input, multihead_out + n * (seq_len * head_hidden_size_ >> 2));
     }
-    system("m5 dumpresetstats");
 
 #ifndef REARRANGE
     Transpose::multihead_transpose(multihead_out, multihead_out_reshape,
@@ -58,7 +57,6 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
 
     std::cout << "Condense"  << std::endl;
     condense->compute(seq_len, multihead_out, condense_out);
-    system("m5 dumpresetstats");
 
     std::cout << "Add Norm"  << std::endl;
 #ifdef REARRANGE
@@ -71,11 +69,9 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
 
     std::cout << "Feed Forward 0"  << std::endl;
     feedForward0->compute(seq_len, condense_out, intermediateFF);
-    system("m5 dumpresetstats");
 
     std::cout << "Feed Forward 1"  << std::endl;
     feedForward1->compute(seq_len, intermediateFF, output);
-    system("m5 dumpresetstats");
 
     std::cout << "Add Norm"  << std::endl;
 #ifdef REARRANGE
@@ -105,6 +101,4 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
 //        }
 //    }
 //    std::cout<< "Total Error Output: " << error_total<<std::endl;
-//
-//    getchar();
 }
