@@ -2,7 +2,9 @@
 //#include"gtest/gtest.h"
 #include "transformer.h"
 #include <fstream>
+#ifndef RELOAD_WEIGHT
 #include <filesystem>
+#endif
 #include "transformer_layers/debuggerFunctions.h"
 
 #define KERNEL_DIM SA_SIZE
@@ -66,6 +68,53 @@ void fill_sparse_weight(uint32_t * kernel, uint32_t* sparse_flag, int n_row, int
             }
         }
     }
+}
+
+
+void remove_zero_tiles(uint32_t* kernel, int n_row, int n_col) {
+    uint32_t * new_kernel;
+    new_kernel = new uint32_t [n_row * n_col];
+    int counter = 0;
+
+    for (int i = 0; i < n_row / KERNEL_DIM; i++) {
+        for (int j = 0; j < n_col / MAX_COL; j++) {
+            int tile_index = (i * (n_col / MAX_COL) + j) * KERNEL_DIM * MAX_COL;
+            bool all_zeros = true;
+
+            for (int ii = 0; ii < KERNEL_DIM; ii++) {
+                for (int jj = 0; jj < MAX_COL; jj++) {
+                    uint32_t value = kernel[tile_index + ii * MAX_COL + jj];
+                    if (value != 0) {
+                        all_zeros = false;
+                        break;
+                    }
+                }
+                if (!all_zeros) {
+                    break;
+                }
+            }
+
+            if (!all_zeros) {
+                for (int ii = 0; ii < KERNEL_DIM; ii++) {
+                    for (int jj = 0; jj < MAX_COL; jj++) {
+                        *new_kernel ++ = kernel[tile_index + ii * MAX_COL + jj];
+                    }
+                }
+            }
+            else{
+                counter ++;
+            }
+        }
+    }
+    std::cout<< "Zero tile removed "<< counter << std::endl;
+    kernel = new_kernel;
+}
+
+void load_kernel_from_file(std::vector<uint32_t> &kernel, int n_row, int n_col, const char *filename) {
+    std::ifstream file(filename, std::ios::binary);
+    kernel.resize(n_row * n_col);
+    file.read(reinterpret_cast<char *>(kernel.data()), n_row * n_col * sizeof(uint32_t));
+    file.close();
 }
 
 void saveWeight(int n_head, int qkv, int size, uint32_t *array, int sparsity_level, const std::string &dir_name) {
@@ -148,6 +197,11 @@ void test(int sparsity_percentage){
         loadWeight(n, 10, head_flag_size, query_flag, sparsity_percentage, dir_name);
         loadWeight(n, 11, head_flag_size, key_flag, sparsity_percentage, dir_name);
         loadWeight(n, 12, head_flag_size, value_flag, sparsity_percentage, dir_name);
+    #ifndef LOAD_SKIP
+        remove_zero_tiles(query_kernel, D_MODEL, D_Q >> 2);
+        remove_zero_tiles(key_kernel, D_MODEL, D_Q >> 2);
+        remove_zero_tiles(value_kernel, D_MODEL, D_Q >> 2);
+    #endif
 #else
         fill_sparse_weight(query_kernel, query_flag, D_MODEL, D_Q >> 2, sparsity_percentage);
         fill_sparse_weight(key_kernel, key_flag, D_MODEL, D_Q >> 2, sparsity_percentage);
@@ -236,6 +290,12 @@ void test(int sparsity_percentage){
         loadWeight(n, 10, NUM_HEAD * D_Q * D_MODEL / (32 * KERNEL_DIM * MAX_COL), condense_flag, sparsity_percentage, dir_name);
         loadWeight(n, 11, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff0_flag, sparsity_percentage, dir_name);
         loadWeight(n, 12, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff1_flag, sparsity_percentage, dir_name);
+
+    #ifndef LOAD_SKIP
+        remove_zero_tiles(condense_kernel, NUM_HEAD * D_Q, D_MODEL >> 2);
+        remove_zero_tiles(ff0_kernel, D_MODEL, D_FF >> 2);
+        remove_zero_tiles(ff1_kernel, D_FF, D_MODEL >> 2);
+    #endif
     #else
         fill_sparse_weight(condense_kernel, condense_flag, D_MODEL, NUM_HEAD * D_Q >> 2, sparsity_percentage);
         fill_sparse_weight(ff0_kernel, ff0_flag,D_MODEL, D_FF >> 2, sparsity_percentage);
@@ -277,9 +337,8 @@ void test(int sparsity_percentage){
 }
 
 int main() {
-//    for (int sparsity_level = 0; sparsity_level <= 8; sparsity_level+=10){
-    int sparsity_level = 0;
-    test(sparsity_level);
-//    }
+    for (int sparsity_level = 0; sparsity_level <= 95; sparsity_level+=10){
+        test(sparsity_level);
+    }
     return 0;
 }
