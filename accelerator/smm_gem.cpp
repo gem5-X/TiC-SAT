@@ -141,6 +141,8 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
     int colMaxL2 = std::min(256, (int) (output_size_)) / KERNEL_DIM / colMaxL1;
 
     auto *flag_ptr = (bool *) (flag);
+    int counter = 0;
+    int total_counter =0;
 
     for (int l2In = 0; l2In < (int) ceil((float) seq_len / (float) ROWS_IN_BLOCK / (float) ROWS_IN_L2); l2In++) {
         for (int l2Row = 0; l2Row < (input_size_ / KERNEL_DIM) / rowMaxL2 / rowMaxL1; l2Row++) {
@@ -175,7 +177,9 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                         }
                                         wPtr += output_size_ / W_DATA;
                                     }
+                                    total_counter ++;
                                     if (!non_zero_tile && sparse) {
+                                        counter++;
                                         continue;
                                     }
 
@@ -229,6 +233,8 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
         }
     }
 #ifdef DEVELOP
+    std::cout << "Sparse : " << counter << " Out of : " << total_counter
+    << " So " << (float)counter / (float) total_counter << "%" << std::endl;
     //    print_arr(output, seq_len, output_size_);
     //    getchar();
 #endif
@@ -278,7 +284,9 @@ unsigned int *input_rearrangement(const uint32_t *inputs, std::size_t seq_len, s
 
 void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
                           uint32_t *flag, std::size_t input_size_, std::size_t output_size_, bool sparse) {
-    uint8_t counter = 0;
+    int counter = 0;
+    int total_counter =0;
+
     for (int l2Col = 0; l2Col < output_size_ / KERNEL_DIM; l2Col++) {
         for (int l2Row = 0; l2Row < input_size_ / KERNEL_DIM; l2Row++) {
             // Load the kernel with the corresponding weight
@@ -293,7 +301,9 @@ void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *
                 non_zero_tile += (weight != 0x0);
             }
 
+            total_counter++;
             if (!non_zero_tile && sparse) {
+                counter++;
                 continue;
             }
 #else
@@ -348,6 +358,9 @@ void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *
     }
 
 #ifdef DEVELOP
+    std::cout << "Sparse : " << counter << " Out of : " << total_counter
+    << " So " << (float)counter / (float) total_counter << "%" << std::endl;
+
     //    print_arr(output, output_size_ / KERNEL_DIM, seq_len * KERNEL_DIM);
     //    getchar();
 #endif
