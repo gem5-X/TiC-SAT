@@ -621,6 +621,21 @@ void print_int8 (int8x16_t data, char* name) {
     printf ("\n");
 }
 
+bool is_all_zero_int8x16(int8x16_t vec) {
+    // Create a zero vector for comparison
+    int8x16_t zero_vec = vdupq_n_s8(0);
+
+    // Compare the input vector with the zero vector element-wise
+    uint8x16_t cmp_result = vceqq_s8(vec, zero_vec);
+
+    // Combine the compare results into a single integer
+    uint64x2_t cmp_result_pair = vreinterpretq_u64_u8(cmp_result);
+    uint64_t combined_result = vgetq_lane_u64(cmp_result_pair, 0) & vgetq_lane_u64(cmp_result_pair, 1);
+
+    // Check if all the elements are zero
+    return combined_result == UINT64_MAX;
+}
+
 
 void simdCompute(size_t seq_len, const uint32_t * input, uint32_t * output, uint32_t * weight,
                  uint32_t *flag, size_t input_size_, size_t output_size_, bool sparse) {
@@ -684,6 +699,9 @@ void simdCompute(size_t seq_len, const uint32_t * input, uint32_t * output, uint
     int8x16_t C14;
     int8x16_t C15;
 
+    int counter = 0;
+    int total_counter =0;
+
 
     for (int l2_row_idx = 0; l2_row_idx < ROWS_IN_L2; l2_row_idx++) {
         for (int l2_col_idx = 0; l2_col_idx < W_COL_IN_L2; l2_col_idx++) {
@@ -711,12 +729,56 @@ void simdCompute(size_t seq_len, const uint32_t * input, uint32_t * output, uint
 
             for (int l2_w_idx = 0; l2_w_idx < COLS_IN_L2; l2_w_idx++) {
                 //                bool print_bool = (l2_row_idx == 0 && l2_col_idx == 0 && l2_w_idx == 0);
-                bool print_bool = 0;
                 int A_idx = ((l2_row_idx * ROWS_IN_BLOCK) * input_size_) +  (l2_w_idx) * COLS_IN_BLOCK ;
                 int8_t* input8_t = (int8_t * ) input;
 
                 int B_idx = (l2_col_idx) * COLS_IN_BLOCK + (l2_w_idx) * W_COL_BLOCKS * output_size_;
                 int8_t* weight8_t = (int8_t * ) weight;
+
+
+                B0 = vld1q_s8(weight8_t + B_idx);
+                B1 = vld1q_s8(weight8_t + B_idx + output_size_);
+                B2 = vld1q_s8(weight8_t + B_idx + 2*output_size_);
+                B3 = vld1q_s8(weight8_t + B_idx + 3*output_size_);
+                B4 = vld1q_s8(weight8_t + B_idx + 4*output_size_);
+                B5 = vld1q_s8(weight8_t + B_idx + 5*output_size_);
+                B6 = vld1q_s8(weight8_t + B_idx + 6*output_size_);
+                B7 = vld1q_s8(weight8_t + B_idx + 7*output_size_);
+                B8 = vld1q_s8(weight8_t + B_idx + 8*output_size_);
+                B9 = vld1q_s8(weight8_t + B_idx + 9*output_size_);
+                B10 = vld1q_s8(weight8_t + B_idx + 10*output_size_);
+                B11 = vld1q_s8(weight8_t + B_idx + 11*output_size_);
+                B12 = vld1q_s8(weight8_t + B_idx + 12*output_size_);
+                B13 = vld1q_s8(weight8_t + B_idx + 13*output_size_);
+                B14 = vld1q_s8(weight8_t + B_idx + 14*output_size_);
+                B15 = vld1q_s8(weight8_t + B_idx + 15*output_size_);
+
+
+                total_counter ++;
+                if (sparse){
+                    bool all_zeros = is_all_zero_int8x16(B0) &&
+                            is_all_zero_int8x16(B1) &&
+                            is_all_zero_int8x16(B2) &&
+                            is_all_zero_int8x16(B3) &&
+                            is_all_zero_int8x16(B4) &&
+                            is_all_zero_int8x16(B5) &&
+                            is_all_zero_int8x16(B6) &&
+                            is_all_zero_int8x16(B7) &&
+                            is_all_zero_int8x16(B8) &&
+                            is_all_zero_int8x16(B9) &&
+                            is_all_zero_int8x16(B10) &&
+                            is_all_zero_int8x16(B11) &&
+                            is_all_zero_int8x16(B12) &&
+                            is_all_zero_int8x16(B13) &&
+                            is_all_zero_int8x16(B14) &&
+                            is_all_zero_int8x16(B15);
+
+                    if (all_zeros) {
+                        counter++;
+                        continue;
+                    }
+                }
+
 
 
                 A0 = vld1q_s8(input8_t + A_idx);
@@ -736,77 +798,9 @@ void simdCompute(size_t seq_len, const uint32_t * input, uint32_t * output, uint
                 A14 = vld1q_s8(input8_t + A_idx + 14*input_size_);
                 A15 = vld1q_s8(input8_t + A_idx + 15*input_size_);
 
-                /*for (int k=0; k<4 ; k++)
-                    printf("%x, ", *(input+k));
-                printf("\n");
-
-                print_int8(A0, "A0");
-                print_int8(A1, "A1");
-                print_int8(A2, "A2");
-                print_int8(A3, "A3");
-                print_int8(A4, "A4");
-                print_int8(A5, "A5");
-                print_int8(A6, "A6");
-                print_int8(A7, "A7");
-                print_int8(A8 , "AA8 ");
-                print_int8(A9 , "AA9 ");
-                print_int8(A10, "AA10");
-                print_int8(A11, "AA11");
-                print_int8(A12, "AA12");
-                print_int8(A13, "AA13");
-                print_int8(A14, "AA14");
-                print_int8(A15, "AA15");
-*/
-                B0 = vld1q_s8(weight8_t + B_idx);
-                B1 = vld1q_s8(weight8_t + B_idx + output_size_);
-                B2 = vld1q_s8(weight8_t + B_idx + 2*output_size_);
-                B3 = vld1q_s8(weight8_t + B_idx + 3*output_size_);
-                B4 = vld1q_s8(weight8_t + B_idx + 4*output_size_);
-                B5 = vld1q_s8(weight8_t + B_idx + 5*output_size_);
-                B6 = vld1q_s8(weight8_t + B_idx + 6*output_size_);
-                B7 = vld1q_s8(weight8_t + B_idx + 7*output_size_);
-                B8 = vld1q_s8(weight8_t + B_idx + 8*output_size_);
-                B9 = vld1q_s8(weight8_t + B_idx + 9*output_size_);
-                B10 = vld1q_s8(weight8_t + B_idx + 10*output_size_);
-                B11 = vld1q_s8(weight8_t + B_idx + 11*output_size_);
-                B12 = vld1q_s8(weight8_t + B_idx + 12*output_size_);
-                B13 = vld1q_s8(weight8_t + B_idx + 13*output_size_);
-                B14 = vld1q_s8(weight8_t + B_idx + 14*output_size_);
-                B15 = vld1q_s8(weight8_t + B_idx + 15*output_size_);
-
-                /*print_int8(B0, "B0");
-                print_int8(B1, "B1");
-                print_int8(B2, "B2");
-                print_int8(B3, "B3");
-                print_int8(B4, "B4");
-                print_int8(B5, "B5");
-                print_int8(B6, "B6");
-                print_int8(B7, "B7");
-                print_int8(B8 , "B8 ");
-                print_int8(B9 , "B9 ");
-                print_int8(B10, "B10");
-                print_int8(B11, "B11");
-                print_int8(B12, "B12");
-                print_int8(B13, "B13");
-                print_int8(B14, "B14");
-                print_int8(B15, "B15");
-*/
-
-                if (print_bool){
-                    print_int8(A0, "A0");
-                    print_int8(A1, "A1");
-                }
 
                 C0 = vmlaq_s8(C0, B0, vmovq_n_s8(vgetq_lane_s8(A0, 3)));
-                if (print_bool){
-                    print_int8(B0, "B0");
-                    print_int8(C0, "C0_0");
-                }
                 C0 = vmlaq_s8(C0, B1, vmovq_n_s8(vgetq_lane_s8(A0, 2)));
-                if (print_bool){
-                    print_int8(B0, "B0");
-                    print_int8(C0, "C0_1");
-                }
                 C0 = vmlaq_s8(C0, B2, vmovq_n_s8(vgetq_lane_s8(A0, 1)));
                 C0 = vmlaq_s8(C0, B3, vmovq_n_s8(vgetq_lane_s8(A0, 0)));
                 C0 = vmlaq_s8(C0, B4, vmovq_n_s8(vgetq_lane_s8(A0, 7)));
@@ -1079,27 +1073,6 @@ void simdCompute(size_t seq_len, const uint32_t * input, uint32_t * output, uint
 
             }
 
-            print_int8(C0, "C0");
-            print_int8(C1, "C1");
-            print_int8(C2, "C2");
-            print_int8(C3, "C3");
-            print_int8(C4, "C4");
-            print_int8(C5, "C5");
-            print_int8(C6, "C6");
-            print_int8(C7, "C7");
-            print_int8(C8 , "C8 ");
-            print_int8(C9 , "C9 ");
-            print_int8(C10, "C10");
-            print_int8(C11, "C11");
-            print_int8(C12, "C12");
-            print_int8(C13, "C13");
-            print_int8(C14, "C14");
-            print_int8(C15, "C15");
-
-            bool print_bool = (l2_row_idx == 0 && l2_col_idx == 0);
-            if (print_bool)
-                print_int8(C0, "C0_final");
-
             vst1q_s8(output8_t + C_idx, C0);
             vst1q_s8(output8_t + C_idx + output_size_, C1);
             vst1q_s8(output8_t + C_idx + 2* output_size_, C2);
@@ -1118,6 +1091,14 @@ void simdCompute(size_t seq_len, const uint32_t * input, uint32_t * output, uint
             vst1q_s8(output8_t + C_idx + 15*output_size_, C15);
         }
     }
+
+    #ifdef DEVELOP
+    std::cout << "Sparse : " << counter << " Out of : " << total_counter
+    << " So " << 100.0 * (float)counter / (float) total_counter << "%" << std::endl;
+
+    //    print_arr(output, output_size_ / KERNEL_DIM, seq_len * KERNEL_DIM);
+    //    getchar();
+#endif
 }
 #endif
 
