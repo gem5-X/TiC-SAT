@@ -23,7 +23,11 @@ void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *outpu
 #ifdef REARRANGE
     smmComputeRearranged(seq_len, input, output, weight, flag, input_size_, output_size_, true);
 #else
-    smmCompute(seq_len, input, output, weight, flag, input_size_, output_size_, true);
+    #ifdef SIMD
+        simdCompute(seq_len, input, output, weight, flag, input_size_, output_size_, true);
+    #else
+        smmCompute(seq_len, input, output, weight, flag, input_size_, output_size_, true);
+    #endif
 #endif
 }
 

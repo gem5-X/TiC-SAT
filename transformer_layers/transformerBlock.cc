@@ -83,22 +83,4 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
 #endif
     system("m5 dumpresetstats");
 
-
-//#ifdef REARRANGE
-//    auto keyBlockWise = new uint32_t [seq_len* input_dim_ >> 2]();
-//    blockWise2RowWise(output, keyBlockWise, seq_len, input_dim_ >> 2);
-//    print_weight(keyBlockWise, seq_len, input_dim_ /4);
-//#endif
-//    unsigned int error_total = 0;
-//    for (int elem =0; elem < seq_len*input_dim_ >>2 ; elem++){
-//        unsigned int error = (output[elem] - Rearrange[elem]);
-//        error_total += (error>0 ? error : -error);
-//        if (error){
-//#ifndef REARRANGE
-//            std::cout<< "ERROR: "<< elem << std::endl;
-//            printf("%x, %x\n", output[elem] , Rearrange[elem]);
-//#endif
-//        }
-//    }
-//    std::cout<< "Total Error Output: " << error_total<<std::endl;
 }
