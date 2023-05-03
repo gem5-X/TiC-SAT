@@ -5,6 +5,9 @@
 #include "transformerBlock.h"
 #include "debuggerFunctions.h"
 
+uint32_t rearrange[] = {
+
+};
 
 TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size,
                                    std::size_t num_heads, std::size_t ff_size, uint32_t ** weightVector,
@@ -82,5 +85,27 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     addNorm->compute(condense_out, output);
 #endif
     system("m5 dumpresetstats");
+
+
+#ifdef REARRANGE
+    auto keyBlockWise = new uint32_t [seq_len* input_dim_ >> 2]();
+    blockWise2RowWise(output, keyBlockWise, seq_len, input_dim_ >> 2);
+    print_weight(keyBlockWise, seq_len, input_dim_ /4);
+#endif
+    unsigned int error_total = 0;
+    for (int elem =0; elem < seq_len*input_dim_ >>2 ; elem++){
+        unsigned int error = (output[elem] - rearrange[elem]);
+        error_total += (error>0 ? error : -error);
+        if (error){
+#ifndef REARRANGE
+            std::cout<< "ERROR: "<< elem << std::endl;
+            printf("%x, %x\n", output[elem] , rearrange[elem]);
+#endif
+        }
+    }
+    std::cout<< "Total Error Output: " << error_total<<std::endl;
+
+    getchar();
+
 
 }
