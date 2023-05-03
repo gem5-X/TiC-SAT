@@ -727,6 +727,101 @@ void simdCompute(size_t seq_len, const uint32_t * input, uint32_t * output, uint
     //    getchar();
 #endif
 }
+
+
+
+void simdComputeRearranged(size_t seq_len, const uint32_t * input, uint32_t * output, uint32_t * weight,
+                 uint32_t *flag, size_t input_size_, size_t output_size_, bool sparse) {
+
+    int ROWS_IN_BLOCK = 16;
+    int COLS_IN_BLOCK = 16;
+    int W_COL_BLOCKS = 16;
+
+    int ROWS_IN_L2 = (int) (seq_len / ROWS_IN_BLOCK);
+    int COLS_IN_L2 = (int) (input_size_ / COLS_IN_BLOCK);
+    int W_COL_IN_L2 = (int) (output_size_ / W_COL_BLOCKS);
+
+    int8x16_t A[16];
+    int8x16_t B[16];
+    int8x16_t C[16];
+
+    int counter = 0;
+    int total_counter =0;
+
+    int8_t* weight8_t = (int8_t * ) weight;
+    for (int l2_col_idx = 0; l2_col_idx < W_COL_IN_L2; l2_col_idx++) {
+        for (int l2_w_idx = 0; l2_w_idx < COLS_IN_L2; l2_w_idx++) {
+
+            for (int i = 0; i < 16; ++i) {
+                B[i] = vld1q_s8(weight8_t);
+                weight8_t += 16;
+            }
+
+            total_counter ++;
+
+            if (sparse){
+                bool all_zeros = true;
+
+                for (int i = 0; i < 16; ++i) {
+                    all_zeros = all_zeros && is_all_zero_int8x16(B[i]);
+                }
+
+                if (all_zeros) {
+                    counter++;
+                    continue;
+                }
+            }
+
+            int A_idx = l2_w_idx * COLS_IN_BLOCK * (int) seq_len ;
+            int8_t* input8_t = (int8_t * ) input + A_idx;
+
+            int C_idx = l2_col_idx * COLS_IN_BLOCK * (int) seq_len ;
+            int8_t* output8_t = (int8_t *) output + C_idx;
+
+
+            for (int l2_row_idx = 0; l2_row_idx < ROWS_IN_L2; l2_row_idx++) {
+
+                for (int i=0; i<16; i++)
+                    C[i]=vmovq_n_s8(0);
+
+
+                for (int i=0; i<16; i++){
+                    A[i] = vld1q_s8(input8_t);
+                    input8_t += 16;
+                }
+
+                for (int k=0; k< 16; k++){
+                    for (int i=0; i<16; i++){
+                        C[k] = vmlaq_s8(C[k], B[i], vmovq_n_s8(vgetq_lane_s8(A[k], 4*(i/4) +3-(i%4))));
+                    }
+                }
+
+                for (int i = 0; i < 16; ++i) {
+                    // Load current values from the output array
+                    int8x16_t curr_C = vld1q_s8(output8_t);
+
+                    // Add the new values to the current values
+                    int8x16_t new_C = vaddq_s8(curr_C, C[i]);
+
+                    // Store the updated values back into the output array
+                    vst1q_s8(output8_t, new_C);
+
+                    output8_t += 16;
+                }
+
+            }
+
+        }
+    }
+
+    #ifdef DEVELOP
+    std::cout << "Sparse : " << counter << " Out of : " << total_counter
+    << " So " << 100.0 * (float)counter / (float) total_counter << "%" << std::endl;
+
+    //    print_arr(output, output_size_ / KERNEL_DIM, seq_len * KERNEL_DIM);
+    //    getchar();
+#endif
+}
 #endif
 
 

@@ -6,7 +6,8 @@
 #include "debuggerFunctions.h"
 
 SingleHeadSelfAttn::SingleHeadSelfAttn(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size,
-                                       uint32_t ** weightVector, uint32_t ** flagVector, std::size_t kernel_dim, std::size_t max_col) {
+                                       uint32_t **weightVector, uint32_t **flagVector, std::size_t kernel_dim,
+                                       std::size_t max_col) {
 
     pre_seq_len_ = pre_seq_len;
     head_hidden_size_ = head_hidden_size;
@@ -46,32 +47,43 @@ void SingleHeadSelfAttn::compute(std::size_t seq_len, uint32_t *input, uint32_t 
 
 
 #ifdef REARRANGE
-    std::cout<< "Rearranged method" << std::endl;
+    std::cout << "Rearranged method" << std::endl;
     Transpose::transpose_rearranged(key_layer_out, key_transposed_layer_out, head_hidden_size_,
-                                    pre_seq_len_,kernel_size_, max_col_);
+                                    pre_seq_len_, kernel_size_, max_col_);
+#ifdef SIMD
+    simdComputeRearranged(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, nullptr,
+                          head_hidden_size_,
+                          seq_len, false);
+#else
     smmComputeRearranged(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, nullptr, head_hidden_size_,
                             seq_len, false);
+#endif
     softmax->computeRearranged(attention_scores, seq_len, kernel_size_);
+#ifdef SIMD
+    simdComputeRearranged(seq_len, attention_scores, output, value_layer_out, nullptr, seq_len, head_hidden_size_,
+                          false);
+#else
     smmComputeRearranged(seq_len, attention_scores, output, value_layer_out, nullptr, seq_len, head_hidden_size_, false);
+#endif
 #else
     std::cout<< "TiCSAT method" << std::endl;
     Transpose::transpose(key_layer_out, key_transposed_layer_out, head_hidden_size_,
                                     pre_seq_len_);
-    #ifdef SIMD
+#ifdef SIMD
     simdCompute(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, nullptr,
                head_hidden_size_, seq_len, false);
-    #else
+#else
     smmCompute(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, nullptr,
                 head_hidden_size_, seq_len, false);
-    #endif
+#endif
     softmax->compute(attention_scores, seq_len);
-    #ifdef SIMD
+#ifdef SIMD
     simdCompute(seq_len, attention_scores, output, value_layer_out, nullptr,
                seq_len, head_hidden_size_, false);
-    #else
+#else
     smmCompute(seq_len, attention_scores, output, value_layer_out, nullptr,
                 seq_len, head_hidden_size_, false);
-    #endif
+#endif
 #endif
 
     softmax->post_softmax(output, seq_len, head_hidden_size_);
