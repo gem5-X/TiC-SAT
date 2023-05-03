@@ -13,6 +13,39 @@ void print_weight(uint32_t* kernel, int n_row, int n_col){
         printf("\n");
     }
 }
+void write_weight_to_file(const std::string& filename, uint32_t* kernel, int n_row, int n_col) {
+    std::ofstream file(filename, std::ios::binary);
+    if (!file) {
+        std::cerr << "Error opening file for writing: " << filename << std::endl;
+        return;
+    }
+
+    for (int i = 0; i < n_row; ++i) {
+        for (int j = 0; j < n_col; ++j) {
+            file.write(reinterpret_cast<const char*>(&kernel[i * n_col + j]), sizeof(uint32_t));
+        }
+    }
+
+    file.close();
+}
+
+void read_weight_from_file(const std::string& filename, uint32_t* kernel, int n_row, int n_col) {
+    std::ifstream file(filename, std::ios::binary);
+    if (!file) {
+        std::cerr << "Error opening file for reading: " << filename << std::endl;
+        return;
+    }
+
+    for (int i = 0; i < n_row; ++i) {
+        for (int j = 0; j < n_col; ++j) {
+            file.read(reinterpret_cast<char*>(&kernel[i * n_col + j]), sizeof(uint32_t));
+        }
+    }
+
+    file.close();
+}
+
+
 
 void blockWise2RowWise(const uint32_t * blockWise, uint32_t* rowWise, int n_row, int n_col){
     uint32_t* initialRowWise = rowWise;

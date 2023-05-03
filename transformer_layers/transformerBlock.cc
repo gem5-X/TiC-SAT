@@ -5,10 +5,6 @@
 #include "transformerBlock.h"
 #include "debuggerFunctions.h"
 
-uint32_t rearrange[] = {
-
-};
-
 TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size,
                                    std::size_t num_heads, std::size_t ff_size, uint32_t ** weightVector,
                                    uint32_t ** flagVector,
@@ -86,12 +82,14 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
 #endif
     system("m5 dumpresetstats");
 
-
+    std::string filename = "kernel.bin";
 #ifdef REARRANGE
     auto keyBlockWise = new uint32_t [seq_len* input_dim_ >> 2]();
     blockWise2RowWise(output, keyBlockWise, seq_len, input_dim_ >> 2);
-    print_weight(keyBlockWise, seq_len, input_dim_ /4);
+    write_weight_to_file(filename, keyBlockWise, seq_len, input_dim_ /4);
 #endif
+    uint32_t rearrange[seq_len*input_dim_ >>2];
+    read_weight_from_file(filename, rearrange, seq_len, input_dim_ >>2);
     unsigned int error_total = 0;
     for (int elem =0; elem < seq_len*input_dim_ >>2 ; elem++){
         unsigned int error = (output[elem] - rearrange[elem]);
@@ -104,8 +102,5 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
         }
     }
     std::cout<< "Total Error Output: " << error_total<<std::endl;
-
-    getchar();
-
 
 }
