@@ -702,84 +702,80 @@ void simdCompute(size_t seq_len, const uint32_t * input, uint32_t * output, uint
     int counter = 0;
     int total_counter =0;
 
-
-    for (int l2_row_idx = 0; l2_row_idx < ROWS_IN_L2; l2_row_idx++) {
+    for (int l2_w_idx = 0; l2_w_idx < COLS_IN_L2; l2_w_idx++) {
         for (int l2_col_idx = 0; l2_col_idx < W_COL_IN_L2; l2_col_idx++) {
-            C0=vmovq_n_s8(0);
-            C1=vmovq_n_s8(0);
-            C2=vmovq_n_s8(0);
-            C3=vmovq_n_s8(0);
-            C4=vmovq_n_s8(0);
-            C5=vmovq_n_s8(0);
-            C6=vmovq_n_s8(0);
-            C7=vmovq_n_s8(0);
-            C8=vmovq_n_s8(0);
-            C9=vmovq_n_s8(0);
-            C10=vmovq_n_s8(0);
-            C11=vmovq_n_s8(0);
-            C12=vmovq_n_s8(0);
-            C13=vmovq_n_s8(0);
-            C14=vmovq_n_s8(0);
-            C15=vmovq_n_s8(0);
-
-            int8_t* output8_t = (int8_t * ) output;
-            int C_idx = ((l2_row_idx) * ROWS_IN_BLOCK) * output_size_ + (l2_col_idx) * COLS_IN_BLOCK ;
+            int B_idx = (l2_col_idx) * COLS_IN_BLOCK + (l2_w_idx) * W_COL_BLOCKS * output_size_;
+            int8_t* weight8_t = (int8_t * ) weight;
 
 
+            B0 = vld1q_s8(weight8_t + B_idx);
+            B1 = vld1q_s8(weight8_t + B_idx + output_size_);
+            B2 = vld1q_s8(weight8_t + B_idx + 2*output_size_);
+            B3 = vld1q_s8(weight8_t + B_idx + 3*output_size_);
+            B4 = vld1q_s8(weight8_t + B_idx + 4*output_size_);
+            B5 = vld1q_s8(weight8_t + B_idx + 5*output_size_);
+            B6 = vld1q_s8(weight8_t + B_idx + 6*output_size_);
+            B7 = vld1q_s8(weight8_t + B_idx + 7*output_size_);
+            B8 = vld1q_s8(weight8_t + B_idx + 8*output_size_);
+            B9 = vld1q_s8(weight8_t + B_idx + 9*output_size_);
+            B10 = vld1q_s8(weight8_t + B_idx + 10*output_size_);
+            B11 = vld1q_s8(weight8_t + B_idx + 11*output_size_);
+            B12 = vld1q_s8(weight8_t + B_idx + 12*output_size_);
+            B13 = vld1q_s8(weight8_t + B_idx + 13*output_size_);
+            B14 = vld1q_s8(weight8_t + B_idx + 14*output_size_);
+            B15 = vld1q_s8(weight8_t + B_idx + 15*output_size_);
 
-            for (int l2_w_idx = 0; l2_w_idx < COLS_IN_L2; l2_w_idx++) {
+
+            total_counter ++;
+            if (sparse){
+                bool all_zeros = is_all_zero_int8x16(B0) &&
+                        is_all_zero_int8x16(B1) &&
+                        is_all_zero_int8x16(B2) &&
+                        is_all_zero_int8x16(B3) &&
+                        is_all_zero_int8x16(B4) &&
+                        is_all_zero_int8x16(B5) &&
+                        is_all_zero_int8x16(B6) &&
+                        is_all_zero_int8x16(B7) &&
+                        is_all_zero_int8x16(B8) &&
+                        is_all_zero_int8x16(B9) &&
+                        is_all_zero_int8x16(B10) &&
+                        is_all_zero_int8x16(B11) &&
+                        is_all_zero_int8x16(B12) &&
+                        is_all_zero_int8x16(B13) &&
+                        is_all_zero_int8x16(B14) &&
+                        is_all_zero_int8x16(B15);
+
+                if (all_zeros) {
+                    counter++;
+                    continue;
+                }
+            }
+
+            for (int l2_row_idx = 0; l2_row_idx < ROWS_IN_L2; l2_row_idx++) {
+
+                C0=vmovq_n_s8(0);
+                C1=vmovq_n_s8(0);
+                C2=vmovq_n_s8(0);
+                C3=vmovq_n_s8(0);
+                C4=vmovq_n_s8(0);
+                C5=vmovq_n_s8(0);
+                C6=vmovq_n_s8(0);
+                C7=vmovq_n_s8(0);
+                C8=vmovq_n_s8(0);
+                C9=vmovq_n_s8(0);
+                C10=vmovq_n_s8(0);
+                C11=vmovq_n_s8(0);
+                C12=vmovq_n_s8(0);
+                C13=vmovq_n_s8(0);
+                C14=vmovq_n_s8(0);
+                C15=vmovq_n_s8(0);
+
+                int8_t* output8_t = (int8_t * ) output;
+                int C_idx = ((l2_row_idx) * ROWS_IN_BLOCK) * output_size_ + (l2_col_idx) * COLS_IN_BLOCK ;
+
                 //                bool print_bool = (l2_row_idx == 0 && l2_col_idx == 0 && l2_w_idx == 0);
                 int A_idx = ((l2_row_idx * ROWS_IN_BLOCK) * input_size_) +  (l2_w_idx) * COLS_IN_BLOCK ;
                 int8_t* input8_t = (int8_t * ) input;
-
-                int B_idx = (l2_col_idx) * COLS_IN_BLOCK + (l2_w_idx) * W_COL_BLOCKS * output_size_;
-                int8_t* weight8_t = (int8_t * ) weight;
-
-
-                B0 = vld1q_s8(weight8_t + B_idx);
-                B1 = vld1q_s8(weight8_t + B_idx + output_size_);
-                B2 = vld1q_s8(weight8_t + B_idx + 2*output_size_);
-                B3 = vld1q_s8(weight8_t + B_idx + 3*output_size_);
-                B4 = vld1q_s8(weight8_t + B_idx + 4*output_size_);
-                B5 = vld1q_s8(weight8_t + B_idx + 5*output_size_);
-                B6 = vld1q_s8(weight8_t + B_idx + 6*output_size_);
-                B7 = vld1q_s8(weight8_t + B_idx + 7*output_size_);
-                B8 = vld1q_s8(weight8_t + B_idx + 8*output_size_);
-                B9 = vld1q_s8(weight8_t + B_idx + 9*output_size_);
-                B10 = vld1q_s8(weight8_t + B_idx + 10*output_size_);
-                B11 = vld1q_s8(weight8_t + B_idx + 11*output_size_);
-                B12 = vld1q_s8(weight8_t + B_idx + 12*output_size_);
-                B13 = vld1q_s8(weight8_t + B_idx + 13*output_size_);
-                B14 = vld1q_s8(weight8_t + B_idx + 14*output_size_);
-                B15 = vld1q_s8(weight8_t + B_idx + 15*output_size_);
-
-
-                total_counter ++;
-                if (sparse){
-                    bool all_zeros = is_all_zero_int8x16(B0) &&
-                            is_all_zero_int8x16(B1) &&
-                            is_all_zero_int8x16(B2) &&
-                            is_all_zero_int8x16(B3) &&
-                            is_all_zero_int8x16(B4) &&
-                            is_all_zero_int8x16(B5) &&
-                            is_all_zero_int8x16(B6) &&
-                            is_all_zero_int8x16(B7) &&
-                            is_all_zero_int8x16(B8) &&
-                            is_all_zero_int8x16(B9) &&
-                            is_all_zero_int8x16(B10) &&
-                            is_all_zero_int8x16(B11) &&
-                            is_all_zero_int8x16(B12) &&
-                            is_all_zero_int8x16(B13) &&
-                            is_all_zero_int8x16(B14) &&
-                            is_all_zero_int8x16(B15);
-
-                    if (all_zeros) {
-                        counter++;
-                        continue;
-                    }
-                }
-
-
 
                 A0 = vld1q_s8(input8_t + A_idx);
                 A1 = vld1q_s8(input8_t + A_idx + input_size_);
@@ -1071,24 +1067,21 @@ void simdCompute(size_t seq_len, const uint32_t * input, uint32_t * output, uint
                 C15 = vmlaq_s8(C15, B14,vmovq_n_s8(vgetq_lane_s8(A15, 13)));
                 C15 = vmlaq_s8(C15, B15,vmovq_n_s8(vgetq_lane_s8(A15, 12)));
 
+                int8x16_t C[16] = {C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15};
+
+                for (int i = 0; i < 16; ++i) {
+                    // Load current values from the output array
+                    int8x16_t curr_C = vld1q_s8(output8_t + C_idx + i * output_size_);
+
+                    // Add the new values to the current values
+                    int8x16_t new_C = vaddq_s8(curr_C, C[i]);
+
+                    // Store the updated values back into the output array
+                    vst1q_s8(output8_t + C_idx + i * output_size_, new_C);
+                }
+
             }
 
-            vst1q_s8(output8_t + C_idx, C0);
-            vst1q_s8(output8_t + C_idx + output_size_, C1);
-            vst1q_s8(output8_t + C_idx + 2* output_size_, C2);
-            vst1q_s8(output8_t + C_idx + 3* output_size_, C3);
-            vst1q_s8(output8_t + C_idx + 4* output_size_, C4);
-            vst1q_s8(output8_t + C_idx + 5* output_size_, C5);
-            vst1q_s8(output8_t + C_idx + 6* output_size_, C6);
-            vst1q_s8(output8_t + C_idx + 7* output_size_, C7);
-            vst1q_s8(output8_t + C_idx + 8* output_size_, C8);
-            vst1q_s8(output8_t + C_idx + 9* output_size_, C9);
-            vst1q_s8(output8_t + C_idx + 10*output_size_, C10);
-            vst1q_s8(output8_t + C_idx + 11*output_size_, C11);
-            vst1q_s8(output8_t + C_idx + 12*output_size_, C12);
-            vst1q_s8(output8_t + C_idx + 13*output_size_, C13);
-            vst1q_s8(output8_t + C_idx + 14*output_size_, C14);
-            vst1q_s8(output8_t + C_idx + 15*output_size_, C15);
         }
     }
 
