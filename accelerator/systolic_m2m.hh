@@ -52,9 +52,11 @@ class SystolicMatrixMultiplication {
     int8_t inWaitingMemory[KERNEL_DIM * KERNEL_DIM]{};
 
     uint8_t outWaitingMemory[KERNEL_DIM * KERNEL_DIM]{};
+
+    bool non_zero_tile = false;
     
   public:
-    void loadWeights(int row, int col, uint32_t  val);
+    bool loadWeights(int row, int col, uint32_t  val);
     uint32_t inputQueue(int col, uint32_t  val);
     void printWeights();
     uint32_t streamInOut(uint32_t val);

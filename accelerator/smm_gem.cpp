@@ -120,8 +120,8 @@ uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra) {
 
 SystolicMatrixMultiplication smm = SystolicMatrixMultiplication();
 
-void smmParamWrite(int rm, int rn, uint32_t ra) {
-    smm.loadWeights(rm, rn, ra);
+bool smmParamWrite(int rm, int rn, uint32_t ra) {
+    return smm.loadWeights(rm, rn, ra);
 }
 
 uint32_t smmQueue(int rm, uint32_t ra) {
@@ -300,19 +300,23 @@ void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *
             int colBlockSize = KERNEL_DIM / W_DATA;
 
 #ifdef LOAD_SKIP
-            bool non_zero_tile = false;
+//            bool non_zero_tile = false;
+            bool non_zero_tile_instruction = false;
             for (int i = 0; i < rowBlockSize * colBlockSize; i++) {
                 uint32_t weight = *(weights++);
-                smmParamWrite(i / colBlockSize, i % colBlockSize, weight);
-                non_zero_tile += (weight != 0x0);
+                non_zero_tile_instruction = smmParamWrite(i / colBlockSize, i % colBlockSize, weight);
+//                non_zero_tile += (weight != 0x0);
             }
 
             total_counter++;
-            if (!non_zero_tile && sparse) {
+//            if (non_zero_tile != non_zero_tile_instruction)
+//                std::cout << "ERROR in Zero Tile Detection!" << std::endl;
+            if (!non_zero_tile_instruction && sparse) {
                 counter++;
                 continue;
             }
 #else
+#ifdef ZERO_FREE
             if (sparse) {
                 if (counter == 32) {
                     counter = 0;
@@ -327,6 +331,12 @@ void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *
                 uint32_t weight = *(weights++);
                 smmParamWrite(i / colBlockSize, i % colBlockSize, weight);
             }
+#else
+            for (int i = 0; i < rowBlockSize * colBlockSize; i++) {
+                uint32_t weight = *(weights++);
+                smmParamWrite(i / colBlockSize, i % colBlockSize, weight);
+            }
+#endif
 #endif
 
             // Process the multiplication

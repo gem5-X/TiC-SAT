@@ -67,7 +67,6 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
 #endif
 
     system("m5 dumpresetstats");
-    return;
 
     std::cout << "Feed Forward 0"  << std::endl;
     feedForward0->compute(seq_len, condense_out, intermediateFF);
