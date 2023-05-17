@@ -21,6 +21,12 @@ void fill_kernel(uint32_t* kernel, int kernel_size){
     }
 }
 
+void print_binary(uint32_t value) {
+    for (int i = 31; i >= 0; i--) {
+        std::cout << ((value >> i) & 1);
+    }
+    std::cout<< std::endl;
+}
 
 void fill_sparse_weight(uint32_t * kernel, uint32_t* sparse_flag, int n_row, int n_col, int sparsity){
     auto *flag_ptr = sparse_flag;
@@ -71,9 +77,10 @@ void fill_sparse_weight(uint32_t * kernel, uint32_t* sparse_flag, int n_row, int
 }
 
 
-void remove_zero_tiles(uint32_t* kernel, int n_row, int n_col) {
+void remove_zero_tiles(uint32_t*& kernel, int n_row, int n_col) {
     uint32_t * new_kernel;
-    new_kernel = new uint32_t [n_row * n_col];
+    new_kernel = new uint32_t [n_row * n_col]();
+    uint32_t * new_kernel_ptr = new_kernel;
     int counter = 0;
 
     for (int i = 0; i < n_row / KERNEL_DIM; i++) {
@@ -106,8 +113,7 @@ void remove_zero_tiles(uint32_t* kernel, int n_row, int n_col) {
             }
         }
     }
-    std::cout<< "Zero tile removed "<< counter << std::endl;
-    kernel = new_kernel;
+    kernel = new_kernel_ptr;
 }
 
 void load_kernel_from_file(std::vector<uint32_t> &kernel, int n_row, int n_col, const char *filename) {
@@ -146,6 +152,14 @@ void loadWeight(int n_head, int qkv, int size, uint32_t * array,  int sparsity_l
 
 }
 
+void append_flags(uint32_t* new_flags, int new_flags_count) {
+    std::ofstream outfile("flags_generated.h", std::ios::app);
+    for (int i = 0; i < new_flags_count; i++) {
+        outfile << new_flags[i] << ", ";
+    }
+    outfile.close();
+}
+
 
 void test(int sparsity_percentage){
     std::cout<<"First line" << std::endl;
@@ -155,7 +169,7 @@ void test(int sparsity_percentage){
     std::cout<<"TiCSAT" << std::endl;
 #endif
 
-    std::string dir_name = "data";
+    std::string dir_name = "/mnt/data";
 
     uint32_t* tensor_in = new uint32_t [D_SEQ * D_MODEL >> 2];
     #ifdef RELOAD_WEIGHT
@@ -163,6 +177,14 @@ void test(int sparsity_percentage){
     #else
         fill_kernel(tensor_in, D_SEQ * D_MODEL >> 2);
         saveWeight(-1, -1, D_SEQ * D_MODEL >> 2, tensor_in, 0, dir_name);
+
+        std::ofstream outfile("flags_generated.h");
+        outfile << "#pragma once" << std::endl;
+        outfile << std::endl;
+        outfile << "#include <cstdint>" << std::endl;
+        outfile << std::endl;
+        outfile << "static const uint32_t flags[] = {";
+        outfile.close();
     #endif
 
 #ifndef REARRANGE
@@ -198,9 +220,11 @@ void test(int sparsity_percentage){
         loadWeight(n, 11, head_flag_size, key_flag, sparsity_percentage, dir_name);
         loadWeight(n, 12, head_flag_size, value_flag, sparsity_percentage, dir_name);
     #ifndef LOAD_SKIP
-        remove_zero_tiles(query_kernel, D_MODEL, D_Q >> 2);
-        remove_zero_tiles(key_kernel, D_MODEL, D_Q >> 2);
-        remove_zero_tiles(value_kernel, D_MODEL, D_Q >> 2);
+        #ifdef REARRANGE
+        remove_zero_tiles(const_cast<uint32_t*&>(query_kernel), D_MODEL, D_Q >> 2);
+        remove_zero_tiles(const_cast<uint32_t*&>(key_kernel), D_MODEL, D_Q >> 2);
+        remove_zero_tiles(const_cast<uint32_t*&>(value_kernel), D_MODEL, D_Q >> 2);
+        #endif
     #endif
 #else
         fill_sparse_weight(query_kernel, query_flag, D_MODEL, D_Q >> 2, sparsity_percentage);
@@ -217,6 +241,9 @@ void test(int sparsity_percentage){
         saveWeight(n, 10, head_flag_size, query_flag, sparsity_percentage, dir_name);
         saveWeight(n, 11, head_flag_size, key_flag, sparsity_percentage, dir_name);
         saveWeight(n, 12, head_flag_size, value_flag, sparsity_percentage, dir_name);
+        append_flags(query_flag, head_flag_size);
+        append_flags(key_flag, head_flag_size);
+        append_flags(value_flag, head_flag_size);
 #endif
 
 #ifndef REARRANGE
@@ -283,22 +310,24 @@ void test(int sparsity_percentage){
     #ifdef RELOAD_WEIGHT
         int n = -1; // n=-1 means that we are not saving/loading a head
 
-        loadWeight(n, 0, NUM_HEAD * D_Q * D_MODEL >> 2, condense_kernel, sparsity_percentage, dir_name);
-        loadWeight(n, 1, D_MODEL* D_FF >> 2, ff0_kernel, sparsity_percentage, dir_name);
-        loadWeight(n, 2, D_MODEL* D_FF >> 2, ff1_kernel, sparsity_percentage, dir_name);
-
-        loadWeight(n, 10, NUM_HEAD * D_Q * D_MODEL / (32 * KERNEL_DIM * MAX_COL), condense_flag, sparsity_percentage, dir_name);
-        loadWeight(n, 11, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff0_flag, sparsity_percentage, dir_name);
-        loadWeight(n, 12, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff1_flag, sparsity_percentage, dir_name);
+//        loadWeight(n, 0, NUM_HEAD * D_Q * D_MODEL >> 2, condense_kernel, sparsity_percentage, dir_name);
+//        loadWeight(n, 1, D_MODEL* D_FF >> 2, ff0_kernel, sparsity_percentage, dir_name);
+//        loadWeight(n, 2, D_MODEL* D_FF >> 2, ff1_kernel, sparsity_percentage, dir_name);
+//
+//        loadWeight(n, 10, NUM_HEAD * D_Q * D_MODEL / (32 * KERNEL_DIM * MAX_COL), condense_flag, sparsity_percentage, dir_name);
+//        loadWeight(n, 11, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff0_flag, sparsity_percentage, dir_name);
+//        loadWeight(n, 12, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff1_flag, sparsity_percentage, dir_name);
 
     #ifndef LOAD_SKIP
-        remove_zero_tiles(condense_kernel, NUM_HEAD * D_Q, D_MODEL >> 2);
-        remove_zero_tiles(ff0_kernel, D_MODEL, D_FF >> 2);
-        remove_zero_tiles(ff1_kernel, D_FF, D_MODEL >> 2);
+    #ifdef REARRANGE
+        remove_zero_tiles(const_cast<uint32_t*&>(condense_kernel), NUM_HEAD * D_Q, D_MODEL >> 2);
+        remove_zero_tiles(const_cast<uint32_t*&>(ff0_kernel), D_MODEL, D_FF >> 2);
+        remove_zero_tiles(const_cast<uint32_t*&>(ff1_kernel), D_FF, D_MODEL >> 2);
+    #endif
     #endif
     #else
         fill_sparse_weight(condense_kernel, condense_flag, D_MODEL, NUM_HEAD * D_Q >> 2, sparsity_percentage);
-        fill_sparse_weight(ff0_kernel, ff0_flag,D_MODEL, D_FF >> 2, sparsity_percentage);
+        fill_sparse_weight(ff0_kernel, ff0_flag, D_MODEL, D_FF >> 2, sparsity_percentage);
         fill_sparse_weight(ff1_kernel, ff1_flag, D_FF, D_MODEL >> 2, sparsity_percentage);
 
         int n = -1; // n=-1 means that we are not saving/loading a head
@@ -309,6 +338,14 @@ void test(int sparsity_percentage){
         saveWeight(n, 10, NUM_HEAD * D_Q * D_MODEL / (32 * KERNEL_DIM * MAX_COL), condense_flag, sparsity_percentage, dir_name);
         saveWeight(n, 11, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff0_flag, sparsity_percentage, dir_name);
         saveWeight(n, 12, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff1_flag, sparsity_percentage, dir_name);
+
+        append_flags(condense_flag, NUM_HEAD * D_Q * D_MODEL / (32 * KERNEL_DIM * MAX_COL));
+        append_flags(ff0_flag, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL));
+        append_flags(ff1_flag, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL));
+
+        outfile.open("flags_generated.h", std::ios::app);
+        outfile << "};" << std::endl;
+        outfile.close();
     #endif
 
     #ifndef REARRANGE

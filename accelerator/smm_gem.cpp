@@ -6,6 +6,9 @@
 #include "smm_gem.h"
 #include <cmath>
 
+#include <iomanip>
+#include "../transformer_layers/debuggerFunctions.h"
+
 #ifdef SIMD
 #include <arm_neon.h>
 #endif
@@ -285,7 +288,6 @@ unsigned int *input_rearrangement(const uint32_t *inputs, std::size_t seq_len, s
     return rearranged;
 }
 
-
 void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
                           uint32_t *flag, std::size_t input_size_, std::size_t output_size_, bool sparse) {
     int counter = 0;
@@ -316,7 +318,7 @@ void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *
                     counter = 0;
                     flag++;
                 }
-                if (*flag & (0x00000001 << counter++)) {
+                if (*flag & (0x80000000 >> counter++)) {
                     continue;
                 }
             }
@@ -365,8 +367,8 @@ void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *
     std::cout << "Sparse : " << counter << " Out of : " << total_counter
     << " So " << (float)counter / (float) total_counter << "%" << std::endl;
 
-    //    print_arr(output, output_size_ / KERNEL_DIM, seq_len * KERNEL_DIM);
-    //    getchar();
+//        print_weight(output, seq_len, output_size_/4);
+//        getchar();
 #endif
 }
 

@@ -53,9 +53,11 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
                                    seq_len, head_hidden_size_ >> 2, num_heads_);
     multihead_out = multihead_out_reshape;
 #endif
+    system("m5 dumpresetstats");
 
     std::cout << "Condense"  << std::endl;
     condense->compute(seq_len, multihead_out, condense_out);
+    system("m5 dumpresetstats");
 
     std::cout << "Add Norm"  << std::endl;
 #ifdef REARRANGE
@@ -65,6 +67,7 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
 #endif
 
     system("m5 dumpresetstats");
+    return;
 
     std::cout << "Feed Forward 0"  << std::endl;
     feedForward0->compute(seq_len, condense_out, intermediateFF);
@@ -82,25 +85,25 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
 #endif
     system("m5 dumpresetstats");
 
-    std::string filename = "kernel.bin";
-#ifdef REARRANGE
-    auto keyBlockWise = new uint32_t [seq_len* input_dim_ >> 2]();
-    blockWise2RowWise(output, keyBlockWise, seq_len, input_dim_ >> 2);
-    write_weight_to_file(filename, keyBlockWise, seq_len, input_dim_ /4);
-#endif
-    uint32_t rearrange[seq_len*input_dim_ >>2];
-    read_weight_from_file(filename, rearrange, seq_len, input_dim_ >>2);
-    unsigned int error_total = 0;
-    for (int elem =0; elem < seq_len*input_dim_ >>2 ; elem++){
-        unsigned int error = (output[elem] - rearrange[elem]);
-        error_total += (error>0 ? error : -error);
-        if (error){
-#ifndef REARRANGE
-            std::cout<< "ERROR: "<< elem << std::endl;
-            printf("%x, %x\n", output[elem] , rearrange[elem]);
-#endif
-        }
-    }
-    std::cout<< "Total Error Output: " << error_total<<std::endl;
+//    std::string filename = "kernel.bin";
+//#ifdef REARRANGE
+//    auto keyBlockWise = new uint32_t [seq_len* input_dim_ >> 2]();
+//    blockWise2RowWise(output, keyBlockWise, seq_len, input_dim_ >> 2);
+//    write_weight_to_file(filename, keyBlockWise, seq_len, input_dim_ /4);
+//#endif
+//    uint32_t rearrange[seq_len*input_dim_ >>2];
+//    read_weight_from_file(filename, rearrange, seq_len, input_dim_ >>2);
+//    unsigned int error_total = 0;
+//    for (int elem =0; elem < seq_len*input_dim_ >>2 ; elem++){
+//        unsigned int error = (output[elem] - rearrange[elem]);
+//        error_total += (error>0 ? error : -error);
+//        if (error){
+//#ifndef REARRANGE
+//            std::cout<< "ERROR: "<< elem << std::endl;
+//            printf("%x, %x\n", output[elem] , rearrange[elem]);
+//#endif
+//        }
+//    }
+//    std::cout<< "Total Error Output: " << error_total<<std::endl;
 
 }
