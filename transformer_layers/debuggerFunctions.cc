@@ -60,3 +60,17 @@ void blockWise2RowWise(const uint32_t * blockWise, uint32_t* rowWise, int n_row,
         }
     }
 }
+
+void rowWise2BlockWise(const uint32_t* rowWise, uint32_t* blockWise, int n_row, int n_col) {
+    const uint32_t* initialRowWise = rowWise;
+    for (int col = 0; col < n_col / MAX_COL; col++) {
+        rowWise = initialRowWise + col * MAX_COL;
+        for (int row = 0; row < n_row; row++) {
+            for (int i = 0; i < MAX_COL; i++) {
+                *(blockWise + i) = *(rowWise + i);
+            }
+            rowWise += n_col;
+            blockWise += MAX_COL;
+        }
+    }
+}

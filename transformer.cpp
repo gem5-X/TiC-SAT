@@ -219,7 +219,7 @@ void test(int sparsity_percentage){
         loadWeight(n, 10, head_flag_size, query_flag, sparsity_percentage, dir_name);
         loadWeight(n, 11, head_flag_size, key_flag, sparsity_percentage, dir_name);
         loadWeight(n, 12, head_flag_size, value_flag, sparsity_percentage, dir_name);
-    #ifndef LOAD_SKIP
+    #ifdef ZERO_FREE
         #ifdef REARRANGE
         remove_zero_tiles(const_cast<uint32_t*&>(query_kernel), D_MODEL, D_Q >> 2);
         remove_zero_tiles(const_cast<uint32_t*&>(key_kernel), D_MODEL, D_Q >> 2);
@@ -318,7 +318,7 @@ void test(int sparsity_percentage){
         loadWeight(n, 11, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff0_flag, sparsity_percentage, dir_name);
         loadWeight(n, 12, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff1_flag, sparsity_percentage, dir_name);
 
-    #ifndef LOAD_SKIP
+    #ifdef ZERO_FREE
     #ifdef REARRANGE
         remove_zero_tiles(const_cast<uint32_t*&>(condense_kernel), NUM_HEAD * D_Q, D_MODEL >> 2);
         remove_zero_tiles(const_cast<uint32_t*&>(ff0_kernel), D_MODEL, D_FF >> 2);

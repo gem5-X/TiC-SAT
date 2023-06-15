@@ -174,7 +174,7 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
 //                                            continue;
 //                                        }
 //                                    }
-
+#ifdef LOAD_SKIP
                                     bool non_zero_tile = false;
                                     for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
                                         for (int j = colStart; j < colStart + colBlockSize; j++) {
@@ -189,6 +189,15 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                         counter++;
                                         continue;
                                     }
+#else
+                                    for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
+                                        for (int j = colStart; j < colStart + colBlockSize; j++) {
+                                            uint32_t weight = *(wPtr + j);
+                                            smmParamWrite(i - rowStart, j - colStart, weight);
+                                        }
+                                        wPtr += output_size_ / W_DATA;
+                                    }
+#endif
 
                                     // Process the multiplication
                                     int base_col_idx = (l2Row * rowMaxL2 * rowMaxL1 + tileRow) * MAX_COL;

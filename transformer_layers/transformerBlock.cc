@@ -53,11 +53,9 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
                                    seq_len, head_hidden_size_ >> 2, num_heads_);
     multihead_out = multihead_out_reshape;
 #endif
-    system("m5 dumpresetstats");
 
     std::cout << "Condense"  << std::endl;
     condense->compute(seq_len, multihead_out, condense_out);
-    system("m5 dumpresetstats");
 
     std::cout << "Add Norm"  << std::endl;
 #ifdef REARRANGE
