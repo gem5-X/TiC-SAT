@@ -136,13 +136,20 @@ void saveWeight(int n_head, int qkv, int size, uint32_t *array, int sparsity_lev
     }
 }
 
-void loadWeight(int n_head, int qkv, int size, uint32_t * array,  int sparsity_level, const std::string &dir_name){
+void loadWeight(int n_head, int qkv, int size, uint32_t * array,  int sparsity_level, const std::string &dir_name,
+                const uint32_t* hidden_flag){
+    bool hidden_flag_check = (hidden_flag != nullptr);
     std::string filename = dir_name + "/H" + std::to_string(n_head) + "_L" +
             std::to_string(qkv) + "_S" + std::to_string(sparsity_level) + ".bin";
     std::ifstream fin(filename);
     if (fin.is_open()) {
         for (int i = 0; i < size; i++) {
             fin >> array[i];
+            if (hidden_flag_check)
+                if (array[i] == *hidden_flag){
+                    std::cout << *hidden_flag << " is found in the arrays!" << std::endl;
+                    exit(404);
+                }
         }
         fin.close();
     }
@@ -162,6 +169,7 @@ void append_flags(uint32_t* new_flags, int new_flags_count) {
 
 
 void test(int sparsity_percentage){
+    uint32_t hidden_flag = 0xAAAAAAAA;
     std::cout<<"First line" << std::endl;
 #ifdef REARRANGE
     std::cout<<"Rearranged" << std::endl;
@@ -169,11 +177,11 @@ void test(int sparsity_percentage){
     std::cout<<"TiCSAT" << std::endl;
 #endif
 
-    std::string dir_name = "/mnt/data";
+    std::string dir_name = "/home/alireza/CLionProjects/FvllMontiTransformer/data16";
 
     uint32_t* tensor_in = new uint32_t [D_SEQ * D_MODEL >> 2];
     #ifdef RELOAD_WEIGHT
-        loadWeight(-1, -1, D_SEQ * D_MODEL >> 2, tensor_in, 0, dir_name);
+        loadWeight(-1, -1, D_SEQ * D_MODEL >> 2, tensor_in, 0, dir_name, nullptr);
     #else
         fill_kernel(tensor_in, D_SEQ * D_MODEL >> 2);
         saveWeight(-1, -1, D_SEQ * D_MODEL >> 2, tensor_in, 0, dir_name);
@@ -213,12 +221,12 @@ void test(int sparsity_percentage){
         volatile auto value_flag = new uint32_t [D_Q* D_MODEL / (32* KERNEL_DIM * MAX_COL)]();
 
 #ifdef RELOAD_WEIGHT
-        loadWeight(n, 0, head_qkv_size, query_kernel, sparsity_percentage, dir_name);
-        loadWeight(n, 1, head_qkv_size, key_kernel, sparsity_percentage, dir_name);
-        loadWeight(n, 2, head_qkv_size, value_kernel, sparsity_percentage, dir_name);
-        loadWeight(n, 10, head_flag_size, query_flag, sparsity_percentage, dir_name);
-        loadWeight(n, 11, head_flag_size, key_flag, sparsity_percentage, dir_name);
-        loadWeight(n, 12, head_flag_size, value_flag, sparsity_percentage, dir_name);
+        loadWeight(n, 0, head_qkv_size, query_kernel, sparsity_percentage, dir_name, &hidden_flag);
+        loadWeight(n, 1, head_qkv_size, key_kernel, sparsity_percentage, dir_name, &hidden_flag);
+        loadWeight(n, 2, head_qkv_size, value_kernel, sparsity_percentage, dir_name, &hidden_flag);
+        loadWeight(n, 10, head_flag_size, query_flag, sparsity_percentage, dir_name, nullptr);
+        loadWeight(n, 11, head_flag_size, key_flag, sparsity_percentage, dir_name, nullptr);
+        loadWeight(n, 12, head_flag_size, value_flag, sparsity_percentage, dir_name, nullptr);
     #ifdef ZERO_FREE
         #ifdef REARRANGE
         remove_zero_tiles(const_cast<uint32_t*&>(query_kernel), D_MODEL, D_Q >> 2);
@@ -310,13 +318,14 @@ void test(int sparsity_percentage){
     #ifdef RELOAD_WEIGHT
         int n = -1; // n=-1 means that we are not saving/loading a head
 
-        loadWeight(n, 0, NUM_HEAD * D_Q * D_MODEL >> 2, condense_kernel, sparsity_percentage, dir_name);
-        loadWeight(n, 1, D_MODEL* D_FF >> 2, ff0_kernel, sparsity_percentage, dir_name);
-        loadWeight(n, 2, D_MODEL* D_FF >> 2, ff1_kernel, sparsity_percentage, dir_name);
+        loadWeight(n, 0, NUM_HEAD * D_Q * D_MODEL >> 2, condense_kernel, sparsity_percentage, dir_name, &hidden_flag);
+        loadWeight(n, 1, D_MODEL* D_FF >> 2, ff0_kernel, sparsity_percentage, dir_name, &hidden_flag);
+        loadWeight(n, 2, D_MODEL* D_FF >> 2, ff1_kernel, sparsity_percentage, dir_name, &hidden_flag);
 
-        loadWeight(n, 10, NUM_HEAD * D_Q * D_MODEL / (32 * KERNEL_DIM * MAX_COL), condense_flag, sparsity_percentage, dir_name);
-        loadWeight(n, 11, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff0_flag, sparsity_percentage, dir_name);
-        loadWeight(n, 12, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff1_flag, sparsity_percentage, dir_name);
+        loadWeight(n, 10, NUM_HEAD * D_Q * D_MODEL / (32 * KERNEL_DIM * MAX_COL), condense_flag, sparsity_percentage, dir_name,
+                   nullptr);
+        loadWeight(n, 11, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff0_flag, sparsity_percentage, dir_name, nullptr);
+        loadWeight(n, 12, D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL), ff1_flag, sparsity_percentage, dir_name, nullptr);
 
     #ifdef ZERO_FREE
     #ifdef REARRANGE
