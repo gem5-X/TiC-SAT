@@ -74,3 +74,30 @@ void rowWise2BlockWise(const uint32_t* rowWise, uint32_t* blockWise, int n_row, 
         }
     }
 }
+
+
+void interleave_hidden_flag(uint32_t* kernel, int n_row, int n_col, uint32_t hidden_flag) {
+    for (int i = 0; i < n_row / SA_SIZE; i++) {
+        for (int j = 0; j < n_col / MAX_COL; j++) {
+            int tile_index = (i * (n_col / MAX_COL) + j) * SA_SIZE * MAX_COL;
+            bool all_zeros = true;
+
+            for (int ii = 0; ii < SA_SIZE; ii++) {
+                for (int jj = 0; jj < MAX_COL; jj++) {
+                    uint32_t value = kernel[tile_index + ii * MAX_COL + jj];
+                    if (value != 0) {
+                        all_zeros = false;
+                        break;
+                    }
+                }
+                if (!all_zeros) {
+                    break;
+                }
+            }
+
+            if (all_zeros) {
+                kernel[tile_index] = hidden_flag;
+            }
+        }
+    }
+}
