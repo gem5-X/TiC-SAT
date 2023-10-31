@@ -298,7 +298,8 @@ unsigned int *input_rearrangement(const uint32_t *inputs, std::size_t seq_len, s
 }
 
 void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
-                          uint32_t *flag, std::size_t input_size_, std::size_t output_size_, bool sparse) {
+                          uint32_t *flag, std::size_t input_size_, std::size_t output_size_, bool sparse,
+                          const uint32_t *hidden_flag) {
     int counter = 0;
     int total_counter =0;
 
@@ -341,10 +342,26 @@ void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *
                 smmParamWrite(i / colBlockSize, i % colBlockSize, weight);
             }
 #else
+#ifdef HIDDEN_FLAG
+            total_counter++;
+            if (sparse && (hidden_flag != nullptr)){
+                if (*hidden_flag  == *weights){
+                    counter++;
+                    weights += (rowBlockSize * colBlockSize);
+                    continue;
+                }
+            }
+
             for (int i = 0; i < rowBlockSize * colBlockSize; i++) {
                 uint32_t weight = *(weights++);
                 smmParamWrite(i / colBlockSize, i % colBlockSize, weight);
             }
+#else
+            for (int i = 0; i < rowBlockSize * colBlockSize; i++) {
+                uint32_t weight = *(weights++);
+                smmParamWrite(i / colBlockSize, i % colBlockSize, weight);
+            }
+#endif
 #endif
 #endif
 

@@ -7,16 +7,17 @@
 
 SingleHeadSelfAttn::SingleHeadSelfAttn(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size,
                                        uint32_t **weightVector, uint32_t **flagVector, std::size_t kernel_dim,
-                                       std::size_t max_col) {
+                                       std::size_t max_col, uint32_t* hidden_flag) {
 
     pre_seq_len_ = pre_seq_len;
     head_hidden_size_ = head_hidden_size;
     kernel_size_ = kernel_dim;
     max_col_ = max_col;
+    hidden_flag_ = hidden_flag;
 
-    query_layer = new Dense(input_dim, head_hidden_size, weightVector[0], flagVector[0]);
-    key_layer = new Dense(input_dim, head_hidden_size, weightVector[1], flagVector[1]);
-    value_layer = new Dense(input_dim, head_hidden_size, weightVector[2], flagVector[2]);
+    query_layer = new Dense(input_dim, head_hidden_size, weightVector[0], flagVector[0], hidden_flag);
+    key_layer = new Dense(input_dim, head_hidden_size, weightVector[1], flagVector[1], hidden_flag);
+    value_layer = new Dense(input_dim, head_hidden_size, weightVector[2], flagVector[2], hidden_flag);
     softmax = new Softmax();
 
     query_layer_out = new uint32_t[pre_seq_len * head_hidden_size >> 2]();
@@ -56,14 +57,15 @@ void SingleHeadSelfAttn::compute(std::size_t seq_len, uint32_t *input, uint32_t 
                           seq_len, false);
 #else
     smmComputeRearranged(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, nullptr, head_hidden_size_,
-                            seq_len, false);
+                            seq_len, false, hidden_flag_);
 #endif
     softmax->computeRearranged(attention_scores, seq_len, kernel_size_);
 #ifdef SIMD
     simdComputeRearranged(seq_len, attention_scores, output, value_layer_out, nullptr, seq_len, head_hidden_size_,
                           false);
 #else
-    smmComputeRearranged(seq_len, attention_scores, output, value_layer_out, nullptr, seq_len, head_hidden_size_, false);
+    smmComputeRearranged(seq_len, attention_scores, output, value_layer_out, nullptr, seq_len, head_hidden_size_,
+                         false, hidden_flag_);
 #endif
 #else
     std::cout<< "TiCSAT method" << std::endl;
