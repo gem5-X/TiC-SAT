@@ -347,7 +347,8 @@ void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *
             if (sparse && (hidden_flag != nullptr)){
                 if (*hidden_flag  == *weights){
                     counter++;
-                    weights += (rowBlockSize * colBlockSize);
+//                    weights += (rowBlockSize * colBlockSize);
+                    weights++;
                     continue;
                 }
             }

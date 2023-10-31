@@ -170,9 +170,7 @@ void append_flags(uint32_t* new_flags, int new_flags_count) {
 
 void test(int sparsity_percentage){
     uint32_t hidden_flag ;
-#ifdef HIDDEN_FLAG
     hidden_flag = 0xAAAAAAAA;
-#endif
 
     std::cout<<"First line" << std::endl;
 #ifdef REARRANGE
@@ -302,9 +300,9 @@ void test(int sparsity_percentage){
 //        print_weight(query_kernel, (D_MODEL * D_Q >> 2) / (KERNEL_DIM* MAX_COL), KERNEL_DIM *MAX_COL);
 
 #ifdef HIDDEN_FLAG
-        interleave_hidden_flag(query_kernel, D_MODEL, D_Q >> 2, hidden_flag);
-        interleave_hidden_flag(key_kernel, D_MODEL, D_Q >> 2, hidden_flag);
-        interleave_hidden_flag(value_kernel, D_MODEL, D_Q >> 2, hidden_flag);
+interleave_hidden_flag_zero_free(const_cast<uint32_t*&>(query_kernel), D_MODEL, D_Q >> 2, hidden_flag);
+interleave_hidden_flag_zero_free(const_cast<uint32_t*&>(key_kernel), D_MODEL, D_Q >> 2, hidden_flag);
+interleave_hidden_flag_zero_free(const_cast<uint32_t*&>(value_kernel), D_MODEL, D_Q >> 2, hidden_flag);
 #endif
 
         weightVec[n*3] = query_kernel;
@@ -381,9 +379,9 @@ void test(int sparsity_percentage){
     #endif
 
 #ifdef HIDDEN_FLAG
-        interleave_hidden_flag(condense_kernel, NUM_HEAD * D_Q, D_MODEL >> 2, hidden_flag);
-        interleave_hidden_flag(ff0_kernel, D_MODEL, D_FF >> 2, hidden_flag);
-        interleave_hidden_flag(ff1_kernel, D_FF, D_MODEL >> 2, hidden_flag);
+        interleave_hidden_flag_zero_free(const_cast<uint32_t*&>(condense_kernel), NUM_HEAD * D_Q, D_MODEL >> 2, hidden_flag);
+        interleave_hidden_flag_zero_free(const_cast<uint32_t*&>(ff0_kernel), D_MODEL, D_FF >> 2, hidden_flag);
+        interleave_hidden_flag_zero_free(const_cast<uint32_t*&>(ff1_kernel), D_FF, D_MODEL >> 2, hidden_flag);
 #endif
 
     weightVec[NUM_HEAD*3] = condense_kernel;
