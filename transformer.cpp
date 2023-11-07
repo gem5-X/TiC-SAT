@@ -399,8 +399,9 @@ interleave_hidden_flag_zero_free(const_cast<uint32_t*&>(value_kernel), D_MODEL, 
 }
 
 int main() {
-    for (int sparsity_level = 30; sparsity_level <= 95; sparsity_level+=30){
-        test(sparsity_level);
-    }
+//    for (int sparsity_level = 0; sparsity_level <= 95; sparsity_level+=100){
+//        test(sparsity_level);
+//    }
+    test(0);
     return 0;
 }

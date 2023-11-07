@@ -24,7 +24,7 @@ void simdCompute(std::size_t seq_len, const uint32_t * input, uint32_t * output,
 void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
                 uint32_t *flag, std::size_t input_size_, std::size_t output_size_, bool sparse);
 
-void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
+void smmComputeRearranged(std::size_t seq_len, uint32_t *input, uint32_t *output, uint32_t *weights,
                           uint32_t *flag, std::size_t input_size_, std::size_t output_size_, bool sparse,
                           const uint32_t* hidden_flag);
 
