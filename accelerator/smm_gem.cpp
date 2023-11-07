@@ -326,7 +326,7 @@ void smmComputeRearranged(std::size_t seq_len, uint32_t *input, uint32_t *output
                           const uint32_t *hidden_flag) {
     int counter = 0;
     int total_counter =0;
-    omp_set_num_threads(4); // set number of threads in "parallel" blocks
+    omp_set_num_threads(CORE_NUM); // set number of threads in "parallel" blocks
     std::cout << "l2 col " << output_size_ / KERNEL_DIM << std::endl;
 //    getchar();
 uint32_t *inPtr;
@@ -334,11 +334,14 @@ uint32_t *outPtr;
 uint32_t* weightPtr;
 int rowBlockSize = KERNEL_DIM;
 int colBlockSize = KERNEL_DIM / W_DATA;
+int col_in_th = output_size_ / KERNEL_DIM /  CORE_NUM;
 # pragma omp parallel private(inPtr, outPtr, weightPtr)
 {
     int id = omp_get_thread_num();
-    weightPtr = weights + id * (input_size_ / KERNEL_DIM) * rowBlockSize * colBlockSize;
-    for (int l2Col = id; l2Col < id+1; l2Col++) {
+    int start_index = col_in_th * id;
+    int end_index = start_index + col_in_th;
+    weightPtr = weights + start_index * (input_size_ / KERNEL_DIM) * rowBlockSize * colBlockSize;
+    for (int l2Col = start_index; l2Col < end_index; l2Col++) {
         for (int l2Row = 0; l2Row < input_size_ / KERNEL_DIM; l2Row++) {
             // Load the kernel with the corresponding weight
 

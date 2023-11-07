@@ -58,6 +58,9 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     std::cout << "Condense"  << std::endl;
     condense->compute(seq_len, multihead_out, condense_out);
 
+    print_weight(condense_out, seq_len, input_dim_ / 4);
+    getchar();
+
     std::cout << "Add Norm"  << std::endl;
 #ifdef REARRANGE
     addNorm->computeRearranged(input, condense_out);
