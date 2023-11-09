@@ -40,7 +40,7 @@ void add8in32(uint32_t &memory, uint32_t &systolicResult);
 * -- rn = Parameter y index.
 */
 
-uint64_t smmStream(uint64_t rn) {
+uint64_t smmStream(uint64_t rn, int tid) {
     uint64_t res;
 
     __asm__ volatile(
@@ -68,7 +68,7 @@ uint64_t smmStream(uint64_t rn) {
 * -- ra = Unused.
 * -- rn = Parameter y index.
 */
-uint64_t smmQueue(uint64_t rm, uint64_t rn) {
+uint64_t smmQueue(uint64_t rm, uint64_t rn, int tid=0) {
     uint64_t res;
 
     __asm__ volatile(
@@ -97,7 +97,7 @@ uint64_t smmQueue(uint64_t rm, uint64_t rn) {
  * -- ra = Parameter value.
  * -- rn = Parameter y index.
  */
-uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra) {
+uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra, int tid=0) {
     uint64_t res;
 
     __asm__ volatile(
@@ -155,28 +155,17 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
     auto *flag_ptr = (bool *) (flag);
     int counter = 0;
     int total_counter =0;
-    omp_set_num_threads(2); // set number of threads in "parallel" blocks
-    int omp_start_indices[4] = {0, 1, 2, 3};
-    int omp_end_indices[4] = {1, 2, 3, 4};
+    omp_set_num_threads(CORE_NUM); // set number of threads in "parallel" blocks
 
-    if (ROWS_IN_L2 != 4){
-        std::cout<<"The parallel loop is not 4 instead is " << ROWS_IN_L2 << std::endl;
-        exit(3);
-    }
+    int col_in_th = ROWS_IN_L2 / CORE_NUM;
 
-
+#pragma omp parallel
+    {
+        int omp_id = omp_get_thread_num();
     for (int l2In = 0; l2In < (int) ceil((float) seq_len / (float) ROWS_IN_BLOCK / (float) ROWS_IN_L2); l2In++) {
         for (int l2Row = 0; l2Row < (input_size_ / KERNEL_DIM) / rowMaxL2 / rowMaxL1; l2Row++) {
             for (int l2Col = 0; l2Col < (output_size_ / KERNEL_DIM) / colMaxL2 / colMaxL1; l2Col++) {
-                int omp_id = omp_get_thread_num();
-//                for (int tileInL2 = omp_start_indices[omp_id]; tileInL2 < omp_end_indices[omp_id]; tileInL2++) {
-# pragma omp parallel
-{
-    int id = omp_get_thread_num();
-                for (int tileInL2 = 0; tileInL2 < ROWS_IN_L2; tileInL2++) {
-                    if (omp_id == 1){
-                        break;
-                    }
+                for (int tileInL2 = omp_id*col_in_th; tileInL2 < (omp_id + 1) * col_in_th; tileInL2++) {
                     for (int tileRowL2 = 0; tileRowL2 < rowMaxL2; tileRowL2++) {
                         for (int tileColL2 = 0; tileColL2 < colMaxL2; tileColL2++) {
                             for (int tileRowL1 = 0; tileRowL1 < rowMaxL1; tileRowL1++) {
@@ -215,7 +204,7 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                     for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
                                         for (int j = colStart; j < colStart + colBlockSize; j++) {
                                             uint32_t weight = *(wPtr + j);
-                                            smmParamWrite(i - rowStart, j - colStart, weight, id);
+                                            smmParamWrite(i - rowStart, j - colStart, weight, omp_id);
                                         }
                                         wPtr += output_size_ / W_DATA;
                                     }
@@ -233,9 +222,9 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                     for (int i = 0; i < seqBlockLen; i++) {
                                         for (int j = 0; j < MAX_COL; j++) {
                                             if (j == MAX_COL - 1) {
-                                                mult = smmStream(*(inPtr + j), id);
+                                                mult = smmStream(*(inPtr + j), omp_id);
                                             } else {
-                                                mult = smmQueue(j % MAX_COL, *(inPtr + j), id);
+                                                mult = smmQueue(j % MAX_COL, *(inPtr + j), omp_id);
                                             }
 
                                             if ((i * MAX_COL + j) >=
@@ -252,9 +241,9 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                     for (int i = seqBlockLen * MAX_COL;
                                          i < MAX_COL * (seqBlockLen + 2 * KERNEL_DIM - 1) - 1; i++) {
                                         if ((i % MAX_COL) == MAX_COL - 1) {
-                                            mult = smmStream(0, id);
+                                            mult = smmStream(0, omp_id);
                                         } else {
-                                            mult = smmQueue(i % MAX_COL, 0, id);
+                                            mult = smmQueue(i % MAX_COL, 0, omp_id);
                                         }
                                         if (i >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) { // check if the output is valid
                                             add8in32(mem2d(outPtr, output_size_ / W_DATA, outputIndex / colBlockSize,
@@ -267,11 +256,10 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                         }
                     }
                 }
-                }
             }
         }
     }
-    #pragma omp barrier
+    }
 #ifdef DEVELOP
     std::cout << "Sparse : " << counter << " Out of : " << total_counter
     << " So " << (float)counter / (float) total_counter << "%" << std::endl;
