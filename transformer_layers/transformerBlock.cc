@@ -58,8 +58,6 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     std::cout << "Condense"  << std::endl;
     condense->compute(seq_len, multihead_out, condense_out);
 
-    print_weight(condense_out, seq_len, input_dim_ / 4);
-    getchar();
 
     std::cout << "Add Norm"  << std::endl;
 #ifdef REARRANGE
@@ -85,6 +83,13 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     addNorm->compute(condense_out, output);
 #endif
     system("m5 dumpresetstats");
+
+    print_weight(output, seq_len, input_dim_ / 4);
+    std::cout<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<std::endl;
+    print_weight(output, 1, input_dim_ / 4);
 
 //    std::string filename = "kernel.bin";
 //#ifdef REARRANGE

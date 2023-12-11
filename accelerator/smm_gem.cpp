@@ -9,6 +9,7 @@
 
 #include <iomanip>
 #include "../transformer_layers/debuggerFunctions.h"
+#include <thread>
 
 #ifdef SIMD
 #include <arm_neon.h>
@@ -34,22 +35,23 @@ void add8in32(uint32_t &memory, uint32_t &systolicResult);
 * gem5 variables:     |_____________|_Op264|__|_Op364|_Op164|Dest64|
 *
 * Queueing arguments:
-* -- rd = Parameter value.
-* -- rm = Parameter x index.
-* -- ra = Unused.
-* -- rn = Parameter y index.
+* -- rd = Systolic Array Output.
+* -- rm = Unused.
+* -- ra = Thread index.
+* -- rn = Parameter value.
 */
 
-uint64_t smmStream(uint64_t rn, int tid) {
+uint64_t smmStream(uint64_t rn, uint64_t tid=0) {
     uint64_t res;
 
     __asm__ volatile(
     "MOV X7, %[input_k];"
+    "MOV X8, %[input_i];"
     ".long 0x01081D2A;"
     "MOV %[output], X10;"
     : [output] "=r"(res)
-    : [input_k] "r"(rn)
-    : "x7", "x10"
+    : [input_k] "r"(rn), [input_i] "r"(tid)
+    : "x7", "x8", "x10"
     );
 
     return res;
@@ -63,22 +65,23 @@ uint64_t smmStream(uint64_t rn, int tid) {
 * gem5 variables:     |_____________|_Op264|__|_Op364|_Op164|Dest64|
 *
 * Queueing arguments:
-* -- rd = Parameter value.
-* -- rm = Parameter x index.
-* -- ra = Unused.
-* -- rn = Parameter y index.
+* -- rd = Systolic Array output.
+* -- rm = Parameter index.
+* -- ra = Thread index.
+* -- rn = Parameter value.
 */
-uint64_t smmQueue(uint64_t rm, uint64_t rn, int tid=0) {
+uint64_t smmQueue(uint64_t rm, uint64_t rn, uint64_t tid=0) {
     uint64_t res;
 
     __asm__ volatile(
     "MOV X9, %[input_j];"
     "MOV X7, %[input_k];"
+    "MOV X8, %[input_i];"
     ".long 0x21089D2A;"
     "MOV %[output], X10;"
     : [output] "=r"(res)
-    : [input_j] "r"(rm), [input_k] "r"(rn)
-    : "x7", "x9", "x10"
+    : [input_j] "r"(rm), [input_i] "r"(tid), [input_k] "r"(rn)
+    : "x7", "x8", "x9", "x10"
     );
 
     return res;
@@ -92,22 +95,22 @@ uint64_t smmQueue(uint64_t rm, uint64_t rn, int tid=0) {
  * gem5 variables:     |_____________|_Op264|__|_Op364|_Op164|Dest64|
  *
  * Queueing arguments:
- * -- rd = Success code.
- * -- rm = Parameter x index.
- * -- ra = Parameter value.
- * -- rn = Parameter y index.
+* -- rd = Zero tile code.
+* -- rm = Parameter index.
+* -- ra = Thread index.
+* -- rn = Parameter value.
  */
-uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra, int tid=0) {
+uint64_t smmParamWrite(uint64_t rm, uint64_t rn, int tid=0) {
     uint64_t res;
 
     __asm__ volatile(
-    "MOV X8, %[input_i];"
     "MOV X9, %[input_j];"
     "MOV X7, %[input_k];"
+    "MOV X8, %[input_i];"
     ".long 0x41081D2A;"
     "MOV %[output], X10;"
     : [output] "=r"(res)
-    : [input_i] "r"(ra), [input_j] "r"(rm), [input_k] "r"(rn)
+    : [input_j] "r"(rm), [input_i] "r"(tid), [input_k] "r"(rn)
     : "x7", "x8", "x9", "x10"
     );
 
@@ -125,8 +128,8 @@ SystolicMatrixMultiplication smm2 = SystolicMatrixMultiplication();
 SystolicMatrixMultiplication smm3 = SystolicMatrixMultiplication();
 SystolicMatrixMultiplication smmList[] = {smm0, smm1, smm2, smm3};
 
-bool smmParamWrite(int rm, int rn, uint32_t ra, int tid) {
-    return smmList[tid].loadWeights(rm, rn, ra);
+bool smmParamWrite(int rm, uint32_t ra, int tid) {
+    return smmList[tid].loadWeights(rm, ra);
 }
 
 uint32_t smmQueue(int rm, uint32_t ra, int tid) {
@@ -204,7 +207,8 @@ void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, ui
                                     for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
                                         for (int j = colStart; j < colStart + colBlockSize; j++) {
                                             uint32_t weight = *(wPtr + j);
-                                            smmParamWrite(i - rowStart, j - colStart, weight, omp_id);
+                                            int weight_idx = (i - rowStart) * KERNEL_DIM + (j - colStart) * W_DATA;
+                                            smmParamWrite(weight_idx, weight, omp_id);
                                         }
                                         wPtr += output_size_ / W_DATA;
                                     }
@@ -385,7 +389,7 @@ int col_in_th = output_size_ / KERNEL_DIM /  CORE_NUM;
 
             for (int i = 0; i < rowBlockSize * colBlockSize; i++) {
                 uint32_t weight = *(weightPtr++);
-                smmParamWrite(i / colBlockSize, i % colBlockSize, weight, id);
+                smmParamWrite(i * W_DATA, weight, id);
             }
 #endif
 #endif
@@ -483,7 +487,8 @@ void smmComputeEigen(std::size_t seq_len, const int8_t *input, int8_t *output, i
                 for (int j = 0; j < colBlockSize; j++) {
                     tmp |= (*(wPtr + j) & 0xff) << (8 * (j % 4));
                     if (j % 4 == 3) {
-                        smmParamWrite(i, j / W_DATA, tmp, 0);
+                        smmParamWrite(i * KERNEL_DIM +  j * W_DATA , tmp, 0);
+                        // TODO: double-check with the new func.
                         tmp = 0;
                     }
                 }

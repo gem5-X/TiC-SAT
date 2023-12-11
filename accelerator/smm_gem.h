@@ -39,5 +39,8 @@ void smmComputeEigen(std::size_t seq_len, const int8_t *input, int8_t *output, i
 
 
 void print_arr(uint32_t* array, int n, int p);
+//uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra, int tid);
+//uint64_t smmQueue(uint64_t rm, uint64_t rn, int tid) ;
+//uint64_t smmStream(uint64_t rn, int tid);
 
 #endif //FVLLMONTITRANSFORMER_SMM_GEM_H

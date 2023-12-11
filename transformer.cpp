@@ -1,6 +1,7 @@
 #include"transformer_layers/transformerBlock.h"
 //#include"gtest/gtest.h"
 #include "transformer.h"
+#include "accelerator/smm_gem.h"
 #include <fstream>
 #ifndef RELOAD_WEIGHT
 #include <filesystem>
@@ -240,9 +241,9 @@ void test(int sparsity_percentage){
         fill_sparse_weight(query_kernel, query_flag, D_MODEL, D_Q >> 2, sparsity_percentage);
         fill_sparse_weight(key_kernel, key_flag, D_MODEL, D_Q >> 2, sparsity_percentage);
         fill_sparse_weight(value_kernel, value_flag, D_MODEL, D_Q >> 2, sparsity_percentage);
-        if (!std::filesystem::exists(dir_name)) {
-            std::filesystem::create_directory(dir_name);
-        }
+//        if (!std::filesystem::exists(dir_name)) {
+//            std::filesystem::create_directory(dir_name);
+//        }
 
         saveWeight(n, 0, head_qkv_size, query_kernel, sparsity_percentage, dir_name);
         saveWeight(n, 1, head_qkv_size, key_kernel, sparsity_percentage, dir_name);
