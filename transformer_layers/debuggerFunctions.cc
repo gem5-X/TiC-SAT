@@ -103,16 +103,18 @@ void interleave_hidden_flag(uint32_t* kernel, int n_row, int n_col, uint32_t hid
 }
 
 void interleave_hidden_flag_zero_free(uint32_t*& kernel, int n_row, int n_col, uint32_t hidden_flag) {
+    // It removes all zero tiles and replace them with hidden_flag
     uint32_t * new_kernel;
     new_kernel = new uint32_t [n_row * n_col]();
     uint32_t * new_kernel_ptr = new_kernel;
     int counter = 0;
 
     for (int i = 0; i < n_row / SA_SIZE; i++) {
-        for (int j = 0; j < n_col / MAX_COL; j++) {
+        for (int j = 0; j < n_col / MAX_COL; j++) {  //TODO: reverse the order of i and j
             int tile_index = (i * (n_col / MAX_COL) + j) * SA_SIZE * MAX_COL;
             bool all_zeros = true;
 
+            // We can use the following loop to check if the tile is zero or not
             for (int ii = 0; ii < SA_SIZE; ii++) {
                 for (int jj = 0; jj < MAX_COL; jj++) {
                     uint32_t value = kernel[tile_index + ii * MAX_COL + jj];
