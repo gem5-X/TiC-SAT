@@ -32,8 +32,7 @@
 #include <iostream>
 #include "systolic_m2m.hh"
 
-bool SystolicMatrixMultiplication::loadWeights(int row, int col, uint32_t val) {
-    int idx= row * KERNEL_DIM + col * W_DATA;
+bool SystolicMatrixMultiplication::loadWeights(int idx, uint32_t val) {
     for (int i=0; i < W_DATA; i++){
         auto currVal = (int8_t)((val >> (8 * (W_DATA -i-1))) & 0xff);
         weights[idx + i] = currVal;

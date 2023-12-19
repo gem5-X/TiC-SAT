@@ -24,7 +24,7 @@ void simdCompute(std::size_t seq_len, const uint32_t * input, uint32_t * output,
 void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
                 uint32_t *flag, std::size_t input_size_, std::size_t output_size_, bool sparse);
 
-void smmComputeRearranged(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights,
+void smmComputeRearranged(std::size_t seq_len, uint32_t *input, uint32_t *output, uint32_t *weights,
                           uint32_t *flag, std::size_t input_size_, std::size_t output_size_, bool sparse,
                           const uint32_t* hidden_flag);
 
@@ -39,5 +39,8 @@ void smmComputeEigen(std::size_t seq_len, const int8_t *input, int8_t *output, i
 
 
 void print_arr(uint32_t* array, int n, int p);
+//uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t ra, int tid);
+//uint64_t smmQueue(uint64_t rm, uint64_t rn, int tid) ;
+//uint64_t smmStream(uint64_t rn, int tid);
 
 #endif //FVLLMONTITRANSFORMER_SMM_GEM_H

@@ -178,8 +178,11 @@ void test(int sparsity_percentage){
 #else
     std::cout<<"TiCSAT" << std::endl;
 #endif
-
+#ifdef DEVELOP
     std::string dir_name = "/home/alireza/CLionProjects/FvllMontiTransformer/data16";
+#else
+    std::string dir_name = "/mnt/data";
+#endif
 
     uint32_t* tensor_in = new uint32_t [D_SEQ * D_MODEL >> 2];
     #ifdef RELOAD_WEIGHT

@@ -56,7 +56,7 @@ class SystolicMatrixMultiplication {
     bool non_zero_tile = false;
     
   public:
-    bool loadWeights(int row, int col, uint32_t  val);
+    bool loadWeights(int idx, uint32_t  val);
     uint32_t inputQueue(int col, uint32_t  val);
     void printWeights();
     uint32_t streamInOut(uint32_t val);
