@@ -301,9 +301,7 @@ void dense2metaData_test() {
     bool*m1;
     bool* m2;
     uint32_t* values;
-//    row_ptr = new uint32_t [row_size / SA_SIZE + 1]();
-//    col_ind = new uint32_t [(row_size * col_size) / (SA_SIZE * MAX_COL)]();
-    values = new uint32_t [(row_size * col_size/4)]();
+   values = new uint32_t [(row_size * col_size/4)]();
     m1 = new bool [(col_size/SA_SIZE)]();
     m2 = new bool [((row_size * col_size) / (SA_SIZE* SA_SIZE))]();
 
