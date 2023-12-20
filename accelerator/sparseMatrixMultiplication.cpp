@@ -5,20 +5,21 @@
 #include "sparseMatrixMultiplication.h"
 SparseMatrixMultiplier::SparseMatrixMultiplier(uint32_t *input, uint32_t *output, std::size_t input_size_,
                                                std::size_t output_size_, int seq_len, int KERNEL_DIM,
-                                               int W_DATA, int MAX_COL){
+                                               int MAX_COL, Format format){
     this->input = input;
     this->output = output;
     this->input_size_ = input_size_;
     this->output_size_ = output_size_;
     this->seq_len = seq_len;
     this->KERNEL_DIM = KERNEL_DIM;
-    this->W_DATA = W_DATA;
-    this->MAX_COL = MAX_COL;
+    this->MAX_COL = MAX_COL; // MAX_COL = KERNEL_DIM / W_DATA
+    this->format_ = format;
 }
 
 void SparseMatrixMultiplier::processMultiplication(int row, int col, const uint32_t *values) {
     int rowBlockSize = KERNEL_DIM;
-    int colBlockSize = KERNEL_DIM / W_DATA;
+    int colBlockSize = MAX_COL;
+    int W_DATA = KERNEL_DIM/ MAX_COL;
     uint32_t *inPtr;
     uint32_t *outPtr;
 

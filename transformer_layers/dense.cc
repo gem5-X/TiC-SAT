@@ -5,7 +5,7 @@
 #include <iostream>
 
 Dense::Dense(std::size_t input_size, std::size_t output_size, uint32_t *weightDense, uint32_t *flagDense,
-             uint32_t* hidden_flag) {
+             uint32_t* hidden_flag, int kernel_dim, int max_col) {
     input_size_ = input_size;
     output_size_ = output_size;
     std::cout << "Input Size : " << input_size_ << std::endl;
@@ -14,7 +14,11 @@ Dense::Dense(std::size_t input_size, std::size_t output_size, uint32_t *weightDe
     flag = flagDense;
     bias = nullptr;
     hidden_flag_ = hidden_flag;
+    kernel_dim_ = kernel_dim;
+    max_col_ = max_col;
 }
+// TODO: The above constructor is only for Format::DENSE. Need to add support for other formats.
+//  Different constructors for different formats.
 
 Dense::~Dense() {
 //    delete weight;
@@ -22,11 +26,15 @@ Dense::~Dense() {
 }
 
 void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *output) {
-#ifdef REARRANGE
+#ifdef REARRANGE //TODO: remove all the ifdef
 #ifdef SIMD
     simdComputeRearranged(seq_len, input, output, weight, flag, input_size_, output_size_, true);
 #else
-    smmComputeRearranged(seq_len, input, output, weight, flag, input_size_, output_size_, true, hidden_flag_);
+    auto* sparseMatrixMultiplier = new SparseMatrixMultiplier(input, output, input_size_, output_size_,
+                                                              seq_len,kernel_dim_, max_col_, Format::DENSE);
+    sparseMatrixMultiplier->compute((const int*)flag, nullptr, weight);
+    // TODO: The above function is only for Format::DENSE. Need to add support for other formats.
+//    smmComputeRearranged(seq_len, input, output, weight, flag, input_size_, output_size_, true, hidden_flag_);
 #endif
 #else
 #ifdef SIMD

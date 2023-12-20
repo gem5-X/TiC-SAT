@@ -3,7 +3,7 @@
 #include "dense.h"
 #include "softmax.h"
 #include "transpose.h"
-#include "../accelerator/smm_gem.h"
+#include "../accelerator/sparseMatrixMultiplication.h"
 
 class SingleHeadSelfAttn{
     public:
