@@ -23,13 +23,15 @@ private:
     int MAX_COL;
 
     void processMultiplication(int row, int col, const uint32_t *values);
+    void computeCSR(const int *row_ptr, const int *col_ind, const uint32_t **values);
+    void computeCSC(const int *col_ptr, const int *row_ind, const uint32_t **values);
+    void computeMetaData(const bool* m1, const bool* m2, const uint32_t *values);
 
 public:
     SparseMatrixMultiplier(uint32_t *input, uint32_t *output, std::size_t input_size_,
                            std::size_t output_size_, int seq_len, int KERNEL_DIM, int W_DATA, int MAX_COL);
 
-    void computeCSR(const int *row_ptr, const int *col_ind, const uint32_t **values);
-    void computeCSC(const int *col_ptr, const int *row_ind, const uint32_t **values);
+
 };
 
 

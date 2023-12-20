@@ -21,7 +21,6 @@ void SparseMatrixMultiplier::processMultiplication(int row, int col, const uint3
     int colBlockSize = KERNEL_DIM / W_DATA;
     uint32_t *inPtr;
     uint32_t *outPtr;
-    uint32_t* weightPtr;
 
     for (int k = 0; k < rowBlockSize * colBlockSize; k++) {
         uint32_t weight = values[k];
@@ -85,3 +84,20 @@ void SparseMatrixMultiplier::computeCSC(const int *col_ptr, const int *row_ind, 
         }
     }
 }
+
+void SparseMatrixMultiplier::computeMetaData(const bool* m1, const bool* m2, const uint32_t *values){
+    int row_in_w = (int)this->input_size_ / KERNEL_DIM;
+    int col_in_w = (int)this->output_size_ / KERNEL_DIM;
+
+    for (int i=0; i< col_in_w; i++){
+        if (!m1[i]) continue;
+        for (int j=0; j<row_in_w; j++){
+            if (!m2[j]) continue;
+            int row = j;
+            int col = i;
+            processMultiplication(row, col, values+j*row_in_w+i);
+        }
+    }
+}
+
+
