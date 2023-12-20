@@ -95,8 +95,110 @@ void SparseMatrixMultiplier::computeMetaData(const bool* m1, const bool* m2, con
             if (!m2[j]) continue;
             int row = j;
             int col = i;
-            processMultiplication(row, col, values+j*row_in_w+i);
+            processMultiplication(row, col, values);
+            values += KERNEL_DIM * MAX_COL;
         }
+    }
+}
+
+void SparseMatrixMultiplier::computeDense(uint32_t *flag, const uint32_t *values) {
+    int row_in_w = (int)this->input_size_ / KERNEL_DIM;
+    int col_in_w = (int)this->output_size_ / KERNEL_DIM;
+    int counter = 0;
+    for (int i=0; i< col_in_w; i++){
+        for (int j=0; j<row_in_w; j++){
+            if (counter == 32) {
+                counter = 0;
+                flag++;
+            }
+            if (*flag & (0x80000000 >> counter++)) {
+                continue;
+            }
+            int row = j;
+            int col = i;
+            processMultiplication(row, col, values);
+            values += KERNEL_DIM * MAX_COL;
+        }
+    }
+}
+
+
+void SparseMatrixMultiplier::computeHiddenKey(const uint32_t *hiddenKey, const uint32_t *values) {
+    int row_in_w = (int)this->input_size_ / KERNEL_DIM;
+    int col_in_w = (int)this->output_size_ / KERNEL_DIM;
+    for (int i=0; i< col_in_w; i++){
+        for (int j=0; j<row_in_w; j++){
+            if (*hiddenKey  == *values){
+                values++;
+                continue;
+            }
+            int row = j;
+            int col = i;
+            processMultiplication(row, col, values);
+            values += KERNEL_DIM * MAX_COL;
+        }
+    }
+}
+
+
+void SparseMatrixMultiplier::computeDynamic(const uint32_t *values) {
+    int row_in_w = (int)this->input_size_ / KERNEL_DIM;
+    int col_in_w = (int)this->output_size_ / KERNEL_DIM;
+    for (int i=0; i< col_in_w; i++){
+        for (int j=0; j<row_in_w; j++){
+            int row = j;
+            int col = i;
+            bool zero_tile = true;
+            for (int k = 0; k < KERNEL_DIM * MAX_COL; i++) {
+                if (values[k] != 0x0) { // check if the tile is zero
+                    zero_tile = false;
+                    break;  // if not, break
+                }
+            }
+            if (zero_tile) {
+                values += KERNEL_DIM * MAX_COL; // skip the tile
+                continue;
+            }
+
+            processMultiplication(row, col, values);
+            values += KERNEL_DIM * MAX_COL;
+        }
+    }
+}
+
+void SparseMatrixMultiplier::computeNonPruned(const uint32_t *values) {
+    int row_in_w = (int)this->input_size_ / KERNEL_DIM;
+    int col_in_w = (int)this->output_size_ / KERNEL_DIM;
+    for (int i=0; i< col_in_w; i++){
+        for (int j=0; j<row_in_w; j++){
+            int row = j;
+            int col = i;
+            processMultiplication(row, col, values);
+            values += KERNEL_DIM * MAX_COL;
+        }
+    }
+}
+
+
+void SparseMatrixMultiplier::compute(const int *row_ptr, const int *col_ind, const uint32_t **values) {
+    if (this->format_ == Format::CSR) {
+        computeCSR(row_ptr, col_ind, values);
+    } else if (this->format_ == Format::CSC) {
+        computeCSC(row_ptr, col_ind, values);
+    }
+}
+
+void SparseMatrixMultiplier::compute(const int *row_ptr, const int *col_ind, const uint32_t *values) {
+    if (this->format_ == Format::META_DATA) {
+        computeMetaData((const bool*)row_ptr, (const bool*)col_ind, values);
+    } else if (this->format_ == Format::DENSE) {
+        computeDense((uint32_t*)row_ptr, values);
+    } else if (this->format_ == Format::HIDDEN_KEY) {
+        computeHiddenKey((uint32_t*)row_ptr, values);
+    } else if (this->format_ == Format::DYNAMIC) {
+        computeDynamic(values);
+    } else if (this->format_ == Format::NON_PRUNED) {
+        computeNonPruned(values);
     }
 }
 
