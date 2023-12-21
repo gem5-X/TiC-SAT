@@ -102,6 +102,41 @@ void SparseMatrixMultiplier::computeMetaData(const bool* m1, const bool* m2, con
     }
 }
 
+void SparseMatrixMultiplier::computeInterleavedMetaData(const uint32_t *values) {
+    int row_in_w = (int)this->input_size_ / KERNEL_DIM;
+    int col_in_w = (int)this->output_size_ / KERNEL_DIM;
+
+    // In this first implementation, BLOCK_SIZE is one column of tiles = n_row / KERNEL_DIM = row_in_w
+    int BLOCK_SIZE = row_in_w;
+    int counter32 = 0;
+    int metadata_block_size = (BLOCK_SIZE + 32 - 1) / 32;
+    int metadata_offset = 32 - std::min(32, row_in_w);  // Offset in case the metadata is not aligned to 32 bits
+
+    for (int i=0; i<col_in_w; i++){
+        uint32_t* next_block = values + *values;    // Compute when the next block starts
+        values++;
+        uint32_t metadata = *values;            // Read the metadata
+        counter32 = metadata_offset;
+        values += metadata_block_size;          // Skip the metadata
+        int row = 0;
+
+        while (values < next_block) {
+            if (counter32 == 32) {
+                counter32 = 0;
+                metadata++;
+            }
+            if (!(*metadata & (0x80000000 >> counter32++))) {
+                values += KERNEL_DIM * MAX_COL;
+                row++;
+                continue;
+            }
+            int col = i;
+            processMultiplication(row++, col, values);
+            values += KERNEL_DIM * MAX_COL;
+        }
+    }
+}
+
 void SparseMatrixMultiplier::computeDense(uint32_t *flag, const uint32_t *values) {
     int row_in_w = (int)this->input_size_ / KERNEL_DIM;
     int col_in_w = (int)this->output_size_ / KERNEL_DIM;
@@ -192,6 +227,8 @@ void SparseMatrixMultiplier::compute(const int *row_ptr, const int *col_ind, con
 void SparseMatrixMultiplier::compute(const int *row_ptr, const int *col_ind, const uint32_t *values) {
     if (this->format_ == Format::META_DATA) {
         computeMetaData((const bool*)row_ptr, (const bool*)col_ind, values);
+    } else if (this->format_ == Format::INTERLEAVED) {
+        computeInterleavedMetaData(values);    
     } else if (this->format_ == Format::DENSE) {
         computeDense((uint32_t*)row_ptr, values);
     } else if (this->format_ == Format::HIDDEN_KEY) {

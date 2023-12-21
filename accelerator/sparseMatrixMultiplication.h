@@ -17,7 +17,8 @@ enum Format {
     HIDDEN_KEY,
     DYNAMIC,
     NON_PRUNED,
-    META_DATA
+    META_DATA,
+    INTERLEAVED,
 };
 
 class SparseMatrixMultiplier {
@@ -37,6 +38,7 @@ private:
     void computeCSR(const int *row_ptr, const int *col_ind, const uint32_t **values);
     void computeCSC(const int *col_ptr, const int *row_ind, const uint32_t **values);
     void computeMetaData(const bool* m1, const bool* m2, const uint32_t *values);
+    void computeInterleavedMetaData(const uint32_t *values);
     void computeDense(uint32_t *flag, const uint32_t *values);
     void computeHiddenKey(const uint32_t *hiddenKey, const uint32_t *values);
     void computeDynamic(const uint32_t *values);

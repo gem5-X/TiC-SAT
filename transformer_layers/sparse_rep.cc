@@ -223,7 +223,7 @@ void dense2interleavedMetaData(uint32_t* kernel, int n_row, int n_col, uint32_t*
                 // values only contains non-zero blocks
                 for (int ii = 0; ii < SA_SIZE; ii++) {
                     for (int jj = 0; jj < MAX_COL; jj++) {
-                        *values ++ = kernel[tile_index + ii * MAX_COL + jj];
+                        *(values++) = kernel[tile_index + ii * MAX_COL + jj];
                     }
                 }
                 *metadata |= 0x00000001;
