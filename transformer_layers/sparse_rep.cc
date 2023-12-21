@@ -172,6 +172,76 @@ void dense2metaData(uint32_t* kernel, int n_row, int n_col,
     }
 }
 
+void dense2interleavedMetaData(uint32_t* kernel, int n_row, int n_col, uint32_t* values, uint* size) {
+    //parameters:
+    //kernel: dense matrix
+    //n_row: number of rows
+    //n_col: number of columns
+    //values: Non-zero-blocks with the metadata interleaved
+    //      For each block, first 32 bits offset to the next block,
+    //      next BLOCK_SIZE/32 bits are the metadata,
+    //      next uint32_t until the next block are the block values 
+    //size: true size of values
+
+    // In this first implementation, BLOCK_SIZE is one column of tiles = n_row / SA_SIZE
+    uint BLOCK_SIZE = n_row / SA_SIZE;
+
+    uint32_t* start_index = values;
+    uint32_t counter32 = 0;
+    uint32_t* offset_to_next_block;
+    uint32_t* metadata;
+    uint metadata_block_size = (BLOCK_SIZE + 32 - 1) / 32;  // Number of uint32_t to store the metadata of a block (rounding up)
+    for (int j = 0; j < n_col / MAX_COL; j++) {
+        offset_to_next_block = values++;    // Here we will store the offset at the end of the block
+        metadata = values;                  // Here we will store the metadata of the block
+        values += metadata_block_size;      // Here we will store the values of the block
+        counter32 = 0;
+        for (int i = 0; i < n_row / SA_SIZE; i++) {
+            int tile_index = (j * (n_row / SA_SIZE) + i) * SA_SIZE * MAX_COL;
+            std::cout << std::dec << "tile index : "<<tile_index << "\t";
+            std::cout << std::hex << kernel[tile_index] <<std::endl;
+            bool tileAllZeros = true;
+
+            // Check if the tile is all zeros
+            for (int ii = 0; ii < SA_SIZE; ii++) {
+                for (int jj = 0; jj < MAX_COL; jj++) {
+                    uint32_t value = kernel[tile_index + ii * MAX_COL + jj];
+                    std::cout << std::hex << value << ", ";
+                    if (value != 0) {
+                        tileAllZeros = false;
+                        break;
+                    }
+                }
+                if (!tileAllZeros) {
+                    break;
+                }
+            }
+            std::cout << std::endl;
+            // If the tile is not all zeros, copy the tile to values
+            if (!tileAllZeros) {
+                // copy the tile to values
+                // values only contains non-zero blocks
+                for (int ii = 0; ii < SA_SIZE; ii++) {
+                    for (int jj = 0; jj < MAX_COL; jj++) {
+                        *values ++ = kernel[tile_index + ii * MAX_COL + jj];
+                    }
+                }
+                *metadata |= 0x00000001;
+            }
+            counter32++;
+
+            if (counter32 == 32) {
+                *(++metadata) = 0; // Advance metadata pointer and reset to zero
+                counter32 = 0;
+            } else if (i != n_row / SA_SIZE - 1) {
+                *metadata <<= 1;
+            }
+        }
+        *offset_to_next_block = values - offset_to_next_block;  // Store the offset to the next block
+    }
+    *size = values - start_index;
+}
+
 
 void dense2csr_test() {
     //define row and col sizes
@@ -329,10 +399,64 @@ void dense2metaData_test() {
 
 }
 
+// test function for dense2interleavedMetaData
+void dense2interleavedMetaData_test() {
+    //define row and col sizes
+    int row_size = 16;
+    int col_size = 32;
+
+    //define the metadata sizes
+    uint BLOCK_SIZE = row_size / SA_SIZE;
+    uint metadata_block_size = (BLOCK_SIZE + 32 - 1) / 32;
+
+    uint32_t* kernel = new uint32_t [row_size*col_size/4]();
+    fill_kernel(kernel, row_size*col_size/4);
+
+    //print the dense format
+    uint32_t *rowWise = new uint32_t [row_size*col_size/4]();
+    blockWise2RowWise(kernel, rowWise, row_size, col_size/4);
+
+    for(int i=0; i<row_size; i++){
+        for(int j=0; j<col_size/4; j++){
+            std::cout << std::hex << rowWise[i*col_size/4+j] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    uint32_t* values;
+    // Max size of values holds all tiles, metadata and offsets
+    values = new uint32_t [(row_size * col_size/4) + (metadata_block_size * col_size/4) * col_size/4]();
+    uint32_t size = 0;
+
+    dense2interleavedMetaData(kernel, row_size, col_size/4, values, &size);
+    std::cout << "size: " << size << std::endl;
+
+    // for each column, print the metadata and the values
+    for (int i = 0; i < col_size / 4; i++) {
+        std::cout << "column: " << std::dec << i << std::endl;
+        uint32_t* cur_block = values;
+        uint32_t* next_block = cur_block + *values;
+        std::cout << "offset: " << std::dec << *(values++) << std::endl;
+        
+        std::cout << "metadata: ";
+        for (int j = 0; j < metadata_block_size; j++) {
+            std::cout << std::hex << *(values++) << " ";
+        }
+        std::cout << std::endl;
+
+        std::cout << "values: ";
+        while (values < next_block) {
+            std::cout << std::hex << *(values++) << " ";
+        }
+
+        std::cout << std::endl << std::endl;
+    }
+}
+
 
 //  create a main
 int main() {
-    dense2metaData_test();
+    dense2interleavedMetaData_test();
     return 0;
 }
 
