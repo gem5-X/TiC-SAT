@@ -4,16 +4,11 @@
 #include <memory.h>
 #include <iostream>
 
-Dense::Dense(std::size_t input_size, std::size_t output_size, uint32_t *weightDense, uint32_t *flagDense,
-             uint32_t* hidden_flag) {
+Dense::Dense(std::size_t input_size, std::size_t output_size, uint32_t *weightDense) {
     input_size_ = input_size;
     output_size_ = output_size;
-    std::cout << "Input Size : " << input_size_ << std::endl;
-    std::cout << "Output Size : " << output_size_ << std::endl;
     weight = weightDense;
-    flag = flagDense;
     bias = nullptr;
-    hidden_flag_ = hidden_flag;
 }
 
 Dense::~Dense() {
@@ -24,15 +19,15 @@ Dense::~Dense() {
 void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *output) {
 #ifdef REARRANGE
 #ifdef SIMD
-    simdComputeRearranged(seq_len, input, output, weight, flag, input_size_, output_size_, true);
+    simdComputeBWMA(seq_len, input, output, weight, input_size_, output_size_);
 #else
-    smmComputeRearranged(seq_len, input, output, weight, flag, input_size_, output_size_, true, hidden_flag_);
+    smmComputeBWMA(seq_len, input, output, weight, input_size_, output_size_);
 #endif
 #else
 #ifdef SIMD
-    simdCompute(seq_len, input, output, weight, flag, input_size_, output_size_, true);
+    simdComputeRWMA(seq_len, input, output, weight, input_size_, output_size_);
 #else
-    smmCompute(seq_len, input, output, weight, flag, input_size_, output_size_, true);
+    smmComputeRWMA(seq_len, input, output, weight, input_size_, output_size_);
 #endif
 #endif
 }
