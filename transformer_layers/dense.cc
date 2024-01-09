@@ -17,7 +17,7 @@ Dense::~Dense() {
 }
 
 void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *output) {
-#ifdef REARRANGE
+#ifdef BWMA
 #ifdef SIMD
     simdComputeBWMA(seq_len, input, output, weight, input_size_, output_size_);
 #else

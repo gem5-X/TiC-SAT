@@ -24,7 +24,7 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
     condense_out = new uint32_t[pre_seq_len * input_dim >> 2]();
     intermediateFF = new uint32_t[pre_seq_len * ff_size >> 2]();
 
-#ifndef REARRANGE
+#ifndef BWMA
     multihead_out_reshape = new uint32_t[pre_seq_len * num_heads * head_hidden_size >> 2]();
 #endif
 
@@ -43,7 +43,7 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
         selfatten[n]->compute(seq_len, input, multihead_out + n * (seq_len * head_hidden_size_ >> 2));
     }
 
-#ifndef REARRANGE
+#ifndef BWMA
     Transpose::multihead_transpose(multihead_out, multihead_out_reshape,
                                    seq_len, head_hidden_size_ >> 2, num_heads_);
     multihead_out = multihead_out_reshape;
@@ -54,7 +54,7 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
 
 
     std::cout << "Add Norm"  << std::endl;
-#ifdef REARRANGE
+#ifdef BWMA
     addNorm->computeRearranged(input, condense_out);
 #else
     addNorm->compute(input, condense_out);
@@ -69,7 +69,7 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     feedForward1->compute(seq_len, intermediateFF, output);
 
     std::cout << "Add Norm"  << std::endl;
-#ifdef REARRANGE
+#ifdef BWMA
     addNorm->computeRearranged(condense_out, output);
 #else
     addNorm->compute(condense_out, output);

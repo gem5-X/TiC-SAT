@@ -45,7 +45,7 @@ void SingleHeadSelfAttn::compute(std::size_t seq_len, uint32_t *input, uint32_t 
     value_layer->compute(seq_len, input, value_layer_out);
 
 
-#ifdef REARRANGE
+#ifdef BWMA
     std::cout << "BWMA method" << std::endl;
     Transpose::transpose_rearranged(key_layer_out, key_transposed_layer_out, head_hidden_size_,
                                     pre_seq_len_, kernel_size_, max_col_);

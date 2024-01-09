@@ -33,7 +33,7 @@ private:
     Dense* feedForward0;
     Dense* feedForward1;
 
-#ifndef REARRANGE
+#ifndef BWMA
     uint32_t* multihead_out_reshape;
 #endif
 
