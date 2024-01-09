@@ -444,22 +444,6 @@ void simdComputeRWMA(size_t seq_len, const uint32_t * input, uint32_t * output, 
                 B[i] = vld1q_s8(weight8_t + B_idx + i*output_size_);
             }
 
-
-            total_counter ++;
-
-            if (sparse){
-                bool all_zeros = true;
-
-                for (int i = 0; i < 16; ++i) {
-                    all_zeros = all_zeros && is_all_zero_int8x16(B[i]);
-                }
-
-                if (all_zeros) {
-                    counter++;
-                    continue;
-                }
-            }
-
             for (int l2_row_idx = 0; l2_row_idx < ROWS_IN_L2; l2_row_idx++) {
 
                 for (int i=0; i<16; i++)
@@ -523,21 +507,6 @@ void simdComputeBWMA(size_t seq_len, const uint32_t * input, uint32_t * output, 
             for (int i = 0; i < 16; ++i) {
                 B[i] = vld1q_s8(weight8_t);
                 weight8_t += 16;
-            }
-
-            total_counter ++;
-
-            if (sparse){
-                bool all_zeros = true;
-
-                for (int i = 0; i < 16; ++i) {
-                    all_zeros = all_zeros && is_all_zero_int8x16(B[i]);
-                }
-
-                if (all_zeros) {
-                    counter++;
-                    continue;
-                }
             }
 
             int A_idx = l2_w_idx * COLS_IN_BLOCK * (int) seq_len ;

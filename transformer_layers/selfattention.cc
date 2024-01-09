@@ -50,17 +50,15 @@ void SingleHeadSelfAttn::compute(std::size_t seq_len, uint32_t *input, uint32_t 
     Transpose::transpose_rearranged(key_layer_out, key_transposed_layer_out, head_hidden_size_,
                                     pre_seq_len_, kernel_size_, max_col_);
 #ifdef SIMD
-    simdComputeRearranged(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, nullptr,
-                          head_hidden_size_,
-                          seq_len, false);
+    simdComputeBWMA(seq_len, query_layer_out, attention_scores, key_transposed_layer_out,
+                          head_hidden_size_, seq_len);
 #else
     smmComputeBWMA(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, head_hidden_size_,
                    seq_len);
 #endif
     softmax->computeRearranged(attention_scores, seq_len, kernel_size_);
 #ifdef SIMD
-    simdComputeRearranged(seq_len, attention_scores, output, value_layer_out, nullptr, seq_len, head_hidden_size_,
-                          false);
+    simdComputeBWMA(seq_len, attention_scores, output, value_layer_out, seq_len, head_hidden_size_);
 #else
     smmComputeBWMA(seq_len, attention_scores, output, value_layer_out, seq_len, head_hidden_size_);
 #endif
@@ -69,19 +67,19 @@ void SingleHeadSelfAttn::compute(std::size_t seq_len, uint32_t *input, uint32_t 
     Transpose::transpose(key_layer_out, key_transposed_layer_out, head_hidden_size_,
                                     pre_seq_len_);
 #ifdef SIMD
-    simdCompute(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, nullptr,
-               head_hidden_size_, seq_len, false);
+    simdComputeRWMA(seq_len, query_layer_out, attention_scores, key_transposed_layer_out,
+               head_hidden_size_, seq_len);
 #else
-    smmCompute(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, nullptr,
-                head_hidden_size_, seq_len, false);
+    smmComputeRWMA(seq_len, query_layer_out, attention_scores, key_transposed_layer_out,
+                head_hidden_size_, seq_len);
 #endif
     softmax->compute(attention_scores, seq_len);
 #ifdef SIMD
-    simdCompute(seq_len, attention_scores, output, value_layer_out, nullptr,
-               seq_len, head_hidden_size_, false);
+    simdComputeRWMA(seq_len, attention_scores, output, value_layer_out,
+               seq_len, head_hidden_size_);
 #else
-    smmCompute(seq_len, attention_scores, output, value_layer_out, nullptr,
-                seq_len, head_hidden_size_, false);
+    smmComputeRWMA(seq_len, attention_scores, output, value_layer_out,
+                seq_len, head_hidden_size_);
 #endif
 #endif
 

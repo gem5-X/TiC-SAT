@@ -112,6 +112,8 @@ void test() {
 
 #ifndef REARRANGE
     uint32_t tensorInRowWise[D_SEQ * D_MODEL >> 2];
+    // By default, the saved tensor is in block-wise format
+    // We need to convert it to row-wise format
     blockWise2RowWise(tensor_in, tensorInRowWise, D_SEQ, D_MODEL >> 2);
     tensor_in = tensorInRowWise;
 #endif
@@ -147,6 +149,8 @@ void test() {
 #endif
 
 #ifndef REARRANGE
+        // By default, the saved weights are in block-wise format
+        // We need to convert them to row-wise format
         uint32_t* queryRowWise = new uint32_t [D_MODEL * D_Q >> 2];
         blockWise2RowWise(query_kernel, queryRowWise, D_MODEL, D_Q >> 2);
         query_kernel = queryRowWise;
@@ -197,6 +201,8 @@ void test() {
 #endif
 
 #ifndef REARRANGE
+    // By default, the saved weights are in block-wise format
+    // We need to convert them to row-wise format
     uint32_t* condenseRowWise = new uint32_t [NUM_HEAD * D_Q * D_MODEL >> 2];
     blockWise2RowWise(condense_kernel, condenseRowWise, NUM_HEAD * D_Q, D_MODEL >> 2);
     condense_kernel = condenseRowWise;
@@ -209,9 +215,7 @@ void test() {
 #endif
 
     weightVec[NUM_HEAD * 3] = condense_kernel;
-
     weightVec[NUM_HEAD * 3 + 1] = ff0_kernel;
-
     weightVec[NUM_HEAD * 3 + 2] = ff1_kernel;
 
     TransformerBlock selfatten(D_SEQ, D_MODEL, D_Q, NUM_HEAD, D_FF, weightVec, KERNEL_DIM, MAX_COL);
