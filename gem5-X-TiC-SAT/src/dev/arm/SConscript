@@ -70,6 +70,7 @@ if env['TARGET_ISA'] == 'arm':
     Source('timer_cpulocal.cc')
     Source('timer_a9global.cc')
     Source('systolic_m2m.cc')
+    Source('flag_sparse_memory.cc')
     Source('vgic.cc')
     Source('vio_mmio.cc')
     Source('ufs_device.cc')
@@ -77,6 +78,7 @@ if env['TARGET_ISA'] == 'arm':
 
     DebugFlag('AMBA')
     DebugFlag('SMM')
+    DebugFlag('FSM')
     DebugFlag('FlashDevice')
     DebugFlag('HDLcd')
     DebugFlag('PL111')
