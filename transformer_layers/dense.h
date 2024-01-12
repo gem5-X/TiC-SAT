@@ -24,5 +24,4 @@ private:
     std::size_t output_size_;
     uint32_t *weight; // shape [input_size_, output_size_]
     uint32_t *bias;   // shape [output_size_]
-
 };

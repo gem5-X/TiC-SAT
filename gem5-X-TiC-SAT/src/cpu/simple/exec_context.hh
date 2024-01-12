@@ -99,6 +99,8 @@ class SimpleExecContext : public ExecContext {
     Stats::Scalar numCusAluQueueAccesses;
     
     Stats::Scalar numCusAluParamWriteAccesses;
+    
+    Stats::Scalar numCusMemReadAccesses;
 
     // Number of float alu accesses
     Stats::Scalar numFpAluAccesses;

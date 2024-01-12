@@ -94,5 +94,6 @@ static const OpClass Num_OpClasses = Enums::Num_OpClass;
 static const OpClass CusAluProcessOp = Enums::CusAluProcess;
 static const OpClass CusAluParamWriteOp = Enums::CusAluParamWrite;
 static const OpClass CusAluQueueOp = Enums::CusAluQueue;
+static const OpClass CusMemReadOp = Enums::CusMemRead;
 
 #endif // __CPU__OP_CLASS_HH__

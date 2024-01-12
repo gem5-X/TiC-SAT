@@ -217,7 +217,7 @@ namespace Aarch64
         IntRegIndex ra = (IntRegIndex)(uint32_t)bits(machInst, 14, 10);
 
         uint8_t opc = bits(machInst, 30, 29); // Process, queueing, or param manip
-        // uint8_t rwb = bits(machInst, 15, 15); // Q or DQ / R or W
+        //uint8_t rwb = bits(machInst, 15, 15); // R /W
       	
         switch (bits(machInst, 25, 23)) {
           case 0:
@@ -233,8 +233,10 @@ namespace Aarch64
                 return new Cmprocess64(machInst, rd, ra, rn, rm);
 	      case 0x1:
 		return new Cmqueue64(machInst, rd, ra, rn, rm);
-              case 0x2:
-                return new Cmparamwrite64(machInst, rd, ra, rn, rm);	
+	      case 0x2:
+                return new Cmparamwrite64(machInst, rd, ra, rn, rm);
+	      case 0x3:
+                return new Cmmemread64(machInst, rd, ra, rn, rm);
               default:
                 //M5_UNREACHABLE;
                 return new Unknown64(machInst);

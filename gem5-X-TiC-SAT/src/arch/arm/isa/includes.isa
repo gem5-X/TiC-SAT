@@ -87,6 +87,7 @@ output decoder {{
 // ACM core integration
 #include "arch/arm/system.hh"
 #include "dev/arm/systolic_m2m.hh"
+#include "dev/arm/flag_sparse_memory.hh"
 
 using namespace ArmISA;
 }};

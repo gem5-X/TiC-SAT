@@ -48,6 +48,7 @@
 #include <vector>
 
 #include "dev/arm/systolic_m2m.hh"
+#include "dev/arm/flag_sparse_memory.hh"
 #include "kern/linux/events.hh"
 #include "params/ArmSystem.hh"
 #include "params/GenericArmSystem.hh"
@@ -57,6 +58,7 @@
 class GenericTimer;
 class ThreadContext;
 class SystolicMatrixMultiplication;
+class FlagSparseMemory;
 
 class ArmSystem : public System
 {
@@ -130,6 +132,7 @@ class ArmSystem : public System
     ArmSemihosting *const semihosting;
     
     SystolicMatrixMultiplication * smm;
+    FlagSparseMemory *fsm;
 
   protected:
     /**
@@ -310,6 +313,9 @@ class ArmSystem : public System
     // Getter/setter for AnalogComputationalMemory object.
     void setSystolicMatrixMultiplication(SystolicMatrixMultiplication * acm);
     SystolicMatrixMultiplication * getSystolicMatrixMultiplication();
+    
+    void setFlagSparseMemory(FlagSparseMemory * fsm);
+    FlagSparseMemory * getFlagSparseMemory();
 };
 
 class GenericArmSystem : public ArmSystem

@@ -78,6 +78,7 @@ class BaseCache(MemObject):
     is_read_only = Param.Bool(False, "Is this cache read only (e.g. inst)")
 
     prefetcher = Param.BasePrefetcher(NULL,"Prefetcher attached to cache")
+    #prefetcher = NULL
     prefetch_on_access = Param.Bool(False,
          "Notify the hardware prefetcher on every access (not just misses)")
 

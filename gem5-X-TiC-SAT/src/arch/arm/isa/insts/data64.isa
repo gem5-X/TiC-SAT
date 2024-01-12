@@ -200,10 +200,10 @@ let {{
          * gem5 variables:     |_____________|_Op264|__|_Op364|_Op164|Dest64|
          *
          * Queueing arguments:
-         * -- rd = Parameter value.
+         * -- rd = Systolic Array output
          * -- rm = Unused.
-         * -- ra = Unused.
-         * -- rn = Unused.
+         * -- ra = Thread index.
+         * -- rn = Parameter value.
          */
         
         
@@ -212,8 +212,9 @@ let {{
             ArmSystem::getArmSystem()->getSystolicMatrixMultiplication();
 
 	int val = Op164;
+        int tid = Op364;
 
-        Dest64 = smm->streamInOut(val);
+        Dest64 = smm->streamInOut(tid, val);
 
         """, # code
         overrideOpClass="CusAluProcessOp"
@@ -231,21 +232,22 @@ let {{
          * gem5 variables:     |_____________|_Op264|__|_Op364|_Op164|Dest64|
          *
          * Queueing arguments:
-         * -- rd = Success code.
-         * -- rm = QUEUE_MAX input values packed as <val7, val6, ..., val0> for
-         *         queueing.
-         * -- ra = Number of values to queue.
-         * -- rn = Queueing input memory start index.
+         * -- rd = Systolic Array output.
+         * -- rm = Parameter index.
+         * -- ra = Thread index.
+         * -- rn = Parameter value.
          */
 
 	SystolicMatrixMultiplication * smm =
             ArmSystem::getArmSystem()->getSystolicMatrixMultiplication();
 
 
-        int idx = Op264;
+        
         int val = Op164;
+        int idx = Op264;
+	int tid = Op364;
 
-        Dest64 = smm->inputQueue(idx, val);
+        Dest64 = smm->inputQueue(tid, idx, val);
 
         """, # code
         overrideOpClass="CusAluQueueOp"
@@ -274,15 +276,46 @@ let {{
         SystolicMatrixMultiplication * smm =
             ArmSystem::getArmSystem()->getSystolicMatrixMultiplication();
 
-        int x = Op264;
-	int y = Op164;
-        int val = Op364;
+	int val = Op164;
+        int idx = Op264;
+	int tid = Op364;
 
-        smm->loadWeights(x, y, val);
+        Dest64 = smm->loadWeights(tid, idx, val);
 
         """, # code
         overrideOpClass="CusAluParamWriteOp"
     )
+
+    buildDataXRegInst(
+        "cmmemread", # mnem
+        3, # num of regs interfaced
+        """
+        /* CM Core Parameter Write
+         * Instruction format: |____Opcode___|__rm__|_?|__ra__|__rn__|__rd__|
+         * Bits:               |31_________21|20__16|15|14__10|9____5|4____0|
+         * Binary layout:      |0100_0001_000|0_1000|_0|001_11|01_001|0_1010|
+         * Hex layout:         |__4____1____0|____8_|__|_1____|D____2|____A_|
+         * gem5 variables:     |_____________|_Op264|__|_Op364|_Op164|Dest64|
+         *
+         * Queueing arguments:
+         * -- rd = Success code.
+         * -- rm = Parameter x index.
+         * -- ra = Parameter value.
+         * -- rn = Parameter y index.
+         */
+    
+         SystolicMatrixMultiplication * smm =
+            ArmSystem::getArmSystem()->getSystolicMatrixMultiplication();
+
+        int val = Op364;
+	int tid = xc->tcBase()->threadId();
+
+        Dest64 =  smm->readFlag(tid, val);
+
+        """, # code
+        overrideOpClass="CusMemReadOp"
+    )
+
 
     buildDataXRegInst("madd", 3, "Dest64 = Op164 + Op264 * Op364",
         overrideOpClass="IntMultOp")

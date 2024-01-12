@@ -52,7 +52,7 @@ class OpClass(Enum):
             'SimdFloatMultAcc', 'SimdFloatSqrt',
             'MemRead', 'MemWrite', 'FloatMemRead', 'FloatMemWrite',
             'IprAccess', 'InstPrefetch',
-            'CusAluProcess', 'CusAluParamWrite', 'CusAluQueue']
+            'CusAluProcess', 'CusAluParamWrite', 'CusAluQueue', 'CusMemRead']
 
 class OpDesc(SimObject):
     type = 'OpDesc'

@@ -4,11 +4,9 @@
 #include <memory.h>
 #include <iostream>
 
-Dense::Dense(std::size_t input_size, std::size_t  output_size, uint32_t *weightDense) {
-    input_size_  = input_size;
+Dense::Dense(std::size_t input_size, std::size_t output_size, uint32_t *weightDense) {
+    input_size_ = input_size;
     output_size_ = output_size;
-    std::cout << "Input Size : " << input_size_ << std::endl;
-    std::cout << "Output Size : " << output_size_ << std::endl;
     weight = weightDense;
     bias = nullptr;
 }
@@ -19,7 +17,19 @@ Dense::~Dense() {
 }
 
 void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *output) {
-    conventionalCompute(seq_len, input, output, weight, input_size_, output_size_);
+#ifdef BWMA
+#ifdef SIMD
+    simdComputeBWMA(seq_len, input, output, weight, input_size_, output_size_);
+#else
+    smmComputeBWMA(seq_len, input, output, weight, input_size_, output_size_);
+#endif
+#else
+#ifdef SIMD
+    simdComputeRWMA(seq_len, input, output, weight, input_size_, output_size_);
+#else
+    smmComputeRWMA(seq_len, input, output, weight, input_size_, output_size_);
+#endif
+#endif
 }
 
 void Dense::addbias(std::size_t seq_len, uint32_t *output) {

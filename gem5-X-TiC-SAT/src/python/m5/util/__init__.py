@@ -194,7 +194,7 @@ def readCommand(cmd, **kwargs):
     kwargs.setdefault('close_fds', True)
     try:
         subp = Popen(cmd, **kwargs)
-    except Exception, e:
+    except Exception as e:
         if no_exception:
             return exception
         raise
@@ -206,7 +206,7 @@ def makeDir(path):
     ensure that it is a directory"""
     if os.path.exists(path):
         if not os.path.isdir(path):
-            raise AttributeError, "%s exists but is not directory" % path
+            raise AttributeError("%s exists but is not directory" % path)
     else:
         os.mkdir(path)
 

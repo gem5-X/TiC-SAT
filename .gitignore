@@ -1,5 +1,6 @@
 .idea
 cmake-build-debug
+eigen
 */*weights.cpp
 gem5-X-TiCSAT/build
 gem5-X-TiCSAT/parser.out
@@ -27,3 +28,7 @@ gem5-X-TiCSAT/system/arm/simple_bootloader/*.o
 gem5-X-TiCSAT/system/arm/simple_bootloader/boot.arm
 gem5-X-TiCSAT/system/arm/simple_bootloader/boot_emm.arm
 gem5-X-TiCSAT/system/arm/aarch64_bootloader/boot_emm.arm64
+data*
+taskflow
+gem5.pem
+

@@ -33,57 +33,21 @@
 
 #include "arch/arm/system.hh"
 #include "dev/io_device.hh"
-#include "debug/SMM.hh"
+#include "debug/FSM.hh"
 #include "mem/packet.hh"
 #include "mem/packet_access.hh"
-#include "params/SystolicMatrixMultiplication.hh"
+#include "params/FlagSparseMemory.hh"
+
 
 #include <vector>
 
-#define KERNEL_DIM 16
-#define W_DATA 4
-#define MAX_COL 4
-
-#define mem2d(data,data_len,row,col)   data[((row)*(data_len))+(col)]
 
 class ArmSystem;
 class BaseCPU;
 
-struct SATile {
-    SATile():
-    weights(new int8_t[KERNEL_DIM * KERNEL_DIM]),
-    inputMemory(new int8_t[KERNEL_DIM * KERNEL_DIM]),
-    outputMemory(new int32_t[KERNEL_DIM * (KERNEL_DIM+1)]),
-    inWaitingMemory(new int8_t[KERNEL_DIM * KERNEL_DIM]),
-    outWaitingMemory(new uint8_t[KERNEL_DIM * KERNEL_DIM])
-    {
-        for (int i = 0; i < KERNEL_DIM*KERNEL_DIM; i++) {
-            inputMemory[i] = 0;
-            weights[i] = 0;
-            inWaitingMemory[i] = 0;
-            outWaitingMemory[i] = 0;
-            outputMemory[i] = 0;
-        }
 
-        for (int i = 0; i < KERNEL_DIM; i++) {
-            outputMemory[(KERNEL_DIM* KERNEL_DIM)+i] = 0;
-        }
-    }
-    
-    int8_t * weights;
-    int8_t * inputMemory;
-    int32_t * outputMemory;
-    int8_t * inWaitingMemory;
-    uint8_t * outWaitingMemory;
-    bool non_zero_tile = false;
-};
-
-class SystolicMatrixMultiplication : public BasicPioDevice {
+class FlagSparseMemory : public BasicPioDevice {
   private:
-      
-      std::vector<BaseCPU *> cpus;
-      
-      std::vector<SATile *> tiles;
       
     // System this ACM belongs to.
     ArmSystem * system;
@@ -91,29 +55,18 @@ class SystolicMatrixMultiplication : public BasicPioDevice {
     
     
   public:
-      typedef SystolicMatrixMultiplicationParams Params;
-      const Params * params() const {
-          return dynamic_cast<const Params *>(_params);
-      }
-    SystolicMatrixMultiplication(const Params * p);
-    ~SystolicMatrixMultiplication();
+    FlagSparseMemory(const FlagSparseMemoryParams *p);
+    ~FlagSparseMemory();
     void init() override;
     
-    bool loadWeights(int tid, int idx, uint32_t  val);
-    uint32_t inputQueue(int tid, int col, uint32_t  val);
-    void printWeights();
-    uint32_t readFlag(int tid, uint32_t val);
-    uint32_t streamInOut(int tid, uint32_t val);
-    
+    uint32_t readFlag(int idx);
 
     // Required by SimObject.
     Tick read(PacketPtr pkt) override;
     Tick write(PacketPtr pkt) override;
     void serialize(CheckpointOut &cp) const override;
     void unserialize(CheckpointIn &cp) override;
-    
-    AddrRangeList getAddrRanges() const override;
-    
+       
     
 };
 

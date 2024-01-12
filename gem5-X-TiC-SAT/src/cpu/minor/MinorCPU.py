@@ -151,6 +151,15 @@ class MinorDefaultCusParamWriteFU(MinorFU):
     opLat = 1
 
 
+class MinorDefaultCusMemReadFU(MinorFU):
+    opClasses = minorMakeOpClassSet(['CusMemRead'])
+    timings = [MinorFUTiming(description="CusMemRead",
+        srcRegsRelativeLats=[2])]
+    opLat = 1
+
+
+
+
 class MinorDefaultIntMulFU(MinorFU):
     opClasses = minorMakeOpClassSet(['IntMult'])
     timings = [MinorFUTiming(description='Mul',
@@ -191,7 +200,8 @@ class MinorDefaultFUPool(MinorFUPool):
         MinorDefaultIntMulFU(), MinorDefaultIntDivFU(),
         MinorDefaultFloatSimdFU(), MinorDefaultMemFU(),
         MinorDefaultMiscFU(), 
-        MinorDefaultCusProcessFU(), MinorDefaultCusParamWriteFU(), MinorDefaultCusQueueFU()]
+        MinorDefaultCusProcessFU(), MinorDefaultCusParamWriteFU(), MinorDefaultCusQueueFU(),
+        MinorDefaultCusMemReadFU()]
 
 class ThreadPolicy(Enum): vals = ['SingleThreaded', 'RoundRobin', 'Random']
 

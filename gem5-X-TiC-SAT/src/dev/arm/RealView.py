@@ -105,8 +105,15 @@ class AmbaDmaDevice(DmaDevice):
 class SystolicMatrixMultiplication(BasicPioDevice):
     type = 'SystolicMatrixMultiplication'
     cxx_header = "dev/arm/systolic_m2m.hh"
-    pio_addr = Param.Addr(0x08000000, "Address for SMM core access.")
-    # cpus = VectorParam.BaseCPU("CPUs/harts attached to this device.")
+    pio_addr = Param.Addr(0x10020000, "Address for SMM core access.")
+    pio_size = Param.Int32(0x1000, "Size of SA memory-mapped address range.")
+    cpus = VectorParam.BaseCPU("CPUs/harts attached to this device.")
+
+class FlagSparseMemory(BasicPioDevice):
+    type = 'FlagSparseMemory'
+    cxx_header = "dev/arm/flag_sparse_memory.hh"
+    pio_addr = Param.Addr(0x10041000, "Address for FSM core access.")
+    pio_size = Param.Int32(0x1000, "Size of Flag memory-mapped address range.")
 
 class A9SCU(BasicPioDevice):
     type = 'A9SCU'
@@ -546,6 +553,7 @@ class RealView(Platform):
     _num_pci_int_line = 0
 
     smm = SystolicMatrixMultiplication()
+    fsm = FlagSparseMemory()
 
     def _on_chip_devices(self):
         return []
@@ -724,6 +732,7 @@ class RealViewPBX(RealView):
        self.flash_fake.pio    = bus.master
        self.energy_ctrl.pio   = bus.master
        self.smm.pio           = bus.master
+       self.fsm.pio           = bus.master
 
     # Set the clock domain for IO objects that are considered
     # to be "far" away from the cores.
@@ -753,6 +762,8 @@ class RealViewPBX(RealView):
         self.rtc.clk_domain           = clkdomain
         self.flash_fake.clk_domain    = clkdomain
         self.energy_ctrl.clk_domain   = clkdomain
+	self.smm.clk_domain           = clkdomain
+        self.fsm.clk_domain           = clkdomain
 
 # Reference for memory map and interrupt number
 # RealView Emulation Baseboard User Guide (ARM DUI 0143B)
@@ -839,6 +850,7 @@ class RealViewEB(RealView):
        self.smcreg_fake.pio   = bus.master
        self.energy_ctrl.pio   = bus.master
        self.smm.pio           = bus.master
+       self.fsm.pio           = bus.master
 
     # Set the clock domain for IO objects that are considered
     # to be "far" away from the cores.
@@ -868,6 +880,8 @@ class RealViewEB(RealView):
         self.flash_fake.clk_domain    = clkdomain
         self.smcreg_fake.clk_domain   = clkdomain
         self.energy_ctrl.clk_domain   = clkdomain
+        self.smm.clk_domain           = clkdomain
+        self.fsm.clk_domain           = clkdomain
 
 class VExpress_EMM(RealView):
     _mem_regions = [(Addr('2GB'), Addr('2GB'))]
@@ -967,7 +981,8 @@ class VExpress_EMM(RealView):
             self.usb_fake,
             self.mmc_fake,
             self.energy_ctrl,
-            self.smm
+            self.smm,
+            self.fsm
         ]
         # Try to attach the I/O if it exists
         if hasattr(self, "ide"):
@@ -1058,6 +1073,8 @@ Memory map:
    0x10000000-0x13ffffff: gem5-specific peripherals (Off-chip, CS5)
        0x10000000-0x1000ffff: gem5 energy controller
        0x10010000-0x1001ffff: gem5 pseudo-ops
+       0x10020000-0x10021000: SA tiles.
+       0x10021000-0x10022000: Flag.
 
    0x14000000-0x17ffffff: Reserved (Off-chip, PSRAM, CS1)
    0x18000000-0x1bffffff: Reserved (Off-chip, Peripherals, CS2)
@@ -1130,7 +1147,7 @@ Interrupts:
 
     _off_chip_ranges = [
         # CS1-CS5
-        AddrRange(0x0c000000, 0x1fffffff),
+        AddrRange(0x0c000000, 0x20000000),
         # External AXI interface (PCI)
         AddrRange(0x2f000000, 0x7fffffff),
     ]
@@ -1197,7 +1214,8 @@ Interrupts:
             self.clock24MHz,
             self.vio[0],
             self.vio[1],
-            self.smm
+            self.smm,
+            self.fsm
         ]
 
     def attachPciDevice(self, device, *args, **kwargs):
