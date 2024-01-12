@@ -101,6 +101,7 @@ message Inst {
     CusAluProcess = 34;
     CusAluQueue = 35;
     CusAluParamWrite = 36;
+    CusMemRead = 37;
   }
 
   optional InstType type = 6; // add, mul, fp add, load, store, simd add, …

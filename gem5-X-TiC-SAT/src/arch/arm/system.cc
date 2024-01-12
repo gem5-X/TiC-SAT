@@ -306,12 +306,27 @@ void
 ArmSystem::setSystolicMatrixMultiplication(SystolicMatrixMultiplication * smm)
 {
     this->smm = smm;
+    if (ArmSystem::theSystem == NULL) ArmSystem::theSystem = this;
 }
 
 SystolicMatrixMultiplication *
 ArmSystem::getSystolicMatrixMultiplication()
 {
     return this->smm;
+}
+
+
+void
+ArmSystem::setFlagSparseMemory(FlagSparseMemory * fsm)
+{
+    this->fsm = fsm;
+    if (ArmSystem::theSystem == NULL) ArmSystem::theSystem = this;
+}
+
+FlagSparseMemory *
+ArmSystem::getFlagSparseMemory()
+{
+    return this->fsm;
 }
 
 ArmSystem *

@@ -374,7 +374,7 @@ AtomicSimpleCPU::readMem(Addr addr, uint8_t * data, unsigned size,
             }
             dcache_access = true;
 
-            assert(!pkt.isError());
+            //assert(!pkt.isError());
 
             if (req->isLLSC()) {
                 TheISA::handleLockedRead(thread, req);

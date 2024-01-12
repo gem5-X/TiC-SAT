@@ -277,6 +277,11 @@ BaseSimpleCPU::regStats()
 	            .name(thread_str + ".num_cus_alu_queue_accesses")
 	            .desc("Number of custom alu queue accesses")
 	            ;
+                
+        t_info.numCusMemReadAccesses
+	            .name(thread_str + ".num_cus_mem_read_accesses")
+	            .desc("Number of custom mem read accesses")
+	            ;
 
 
         t_info.numFpAluAccesses
