@@ -113,11 +113,12 @@ void SparseMatrixMultiplier::computeInterleavedMetaData(const uint32_t *values) 
     int metadata_offset = 32 - std::min(32, row_in_w);  // Offset in case the metadata is not aligned to 32 bits
 
     for (int i=0; i<col_in_w; i++){
-        uint32_t* next_block = values + *values;    // Compute when the next block starts
+        uint32_t* next_block = ((uint32_t*) values) + *values;    // Compute when the next block starts
         values++;
-        uint32_t metadata = *values;            // Read the metadata
+        uint32_t* metadata;
+        *metadata = *values;                // Read the metadata
         counter32 = metadata_offset;
-        values += metadata_block_size;          // Skip the metadata
+        values += metadata_block_size;      // Skip the metadata
         int row = 0;
 
         while (values < next_block) {
