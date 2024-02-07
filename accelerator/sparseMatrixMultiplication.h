@@ -8,7 +8,9 @@
 #include <cstddef>
 #include <iostream>
 #include <cstring>
-#include "smm_gem.h"
+
+#define KERNEL_DIM SA_SIZE
+#define MAX_COL (KERNEL_DIM/4)
 
 enum Format {
     CSR,
@@ -29,9 +31,6 @@ private:
     std::size_t output_size_;
     int seq_len;
 
-    int KERNEL_DIM;
-    int MAX_COL;
-
     Format format_;
 
     void processMultiplication(int row, int col, const uint32_t *values);
@@ -46,7 +45,7 @@ private:
 
 public:
     SparseMatrixMultiplier(uint32_t *input, uint32_t *output, std::size_t input_size_,
-                           std::size_t output_size_, int seq_len, int KERNEL_DIM, int MAX_COL, Format format);
+                           std::size_t output_size_, int seq_len, Format format);
 
     void compute(const int *row_ptr, const int *col_ind, const uint32_t **values);
     void compute(const int *row_ptr, const int *col_ind, const uint32_t *values);

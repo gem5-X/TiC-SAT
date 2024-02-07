@@ -21,21 +21,20 @@ void Transpose::transpose(const uint32_t* input, uint32_t* output, std::size_t w
     }
 }
 
-void Transpose::transpose_rearranged(uint32_t* input, uint32_t* output, std::size_t width, std::size_t height,
-                                     std::size_t kernelSize, std::size_t maxCol) {
-    std::size_t tileRow = height / kernelSize;
-    std::size_t tileCol = width / kernelSize;
+void Transpose::transpose_rearranged(uint32_t* input, uint32_t* output, std::size_t width, std::size_t height) {
+    std::size_t tileRow = height / KERNEL_DIM;
+    std::size_t tileCol = width / KERNEL_DIM;
     for (int i=0; i < tileRow; i++){
         for (int j=0; j < tileCol; j++){
-            uint32_t * tileInputPtr = input + (j*tileRow + i) * (kernelSize * maxCol);
-            uint32_t * tileOutputPtr = output + (i* tileCol + j) * (kernelSize * maxCol);
-            for (int m=0; m< maxCol; m++){
+            uint32_t * tileInputPtr = input + (j*tileRow + i) * (KERNEL_DIM * MAX_COL);
+            uint32_t * tileOutputPtr = output + (i* tileCol + j) * (KERNEL_DIM * MAX_COL);
+            for (int m=0; m< MAX_COL; m++){
                 for (int indexIn4 =0; indexIn4<4; indexIn4++){
-                    for ( int k=0; k< maxCol; k++){
+                    for ( int k=0; k< MAX_COL; k++){
                         uint32_t result = 0;
                         for (int s=0; s< 4; s++)
-                            result |= ((*(tileInputPtr+(4*k+s) *maxCol + m)>> (24 - 8*indexIn4)) & 0xFF) << (24 - 8*s);
-                        *(tileOutputPtr + m*4*maxCol + indexIn4* maxCol + k)= result;
+                            result |= ((*(tileInputPtr+(4*k+s) *MAX_COL + m)>> (24 - 8*indexIn4)) & 0xFF) << (24 - 8*s);
+                        *(tileOutputPtr + m*4*MAX_COL + indexIn4* MAX_COL + k)= result;
                     }
                 }
             }

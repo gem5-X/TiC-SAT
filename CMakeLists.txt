@@ -9,7 +9,8 @@ set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}" )
 file(GLOB transformer_SRC
         "transformer_layers/*.h"
         "transformer_layers/*.cc"
-        "accelerator/*.cpp"
+        "accelerator/smm_gem.cpp"
+        "accelerator/sparseMatrixMultiplication.cpp"
         "accelerator/systolic_m2m.cc"
         )
 

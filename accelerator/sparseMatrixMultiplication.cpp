@@ -1,18 +1,16 @@
 //
 // Created by alireza on 12/19/23.
 //
-
+#include "smm_gem.h"
 #include "sparseMatrixMultiplication.h"
+
 SparseMatrixMultiplier::SparseMatrixMultiplier(uint32_t *input, uint32_t *output, std::size_t input_size_,
-                                               std::size_t output_size_, int seq_len, int KERNEL_DIM,
-                                               int MAX_COL, Format format){
+                                               std::size_t output_size_, int seq_len, Format format){
     this->input = input;
     this->output = output;
     this->input_size_ = input_size_;
     this->output_size_ = output_size_;
     this->seq_len = seq_len;
-    this->KERNEL_DIM = KERNEL_DIM;
-    this->MAX_COL = MAX_COL; // MAX_COL = KERNEL_DIM / W_DATA
     this->format_ = format;
 }
 

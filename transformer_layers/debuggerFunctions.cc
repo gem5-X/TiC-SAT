@@ -1,7 +1,6 @@
 //
 // Created by alireza on 4/24/23.
 //
-#define MAX_COL (SA_SIZE/4)
 
 #include "debuggerFunctions.h"
 

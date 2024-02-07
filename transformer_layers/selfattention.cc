@@ -6,13 +6,10 @@
 #include "debuggerFunctions.h"
 
 SingleHeadSelfAttn::SingleHeadSelfAttn(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size,
-                                       uint32_t **weightVector, uint32_t **flagVector, std::size_t kernel_dim,
-                                       std::size_t max_col, uint32_t* hidden_flag) {
+                                       uint32_t **weightVector, uint32_t **flagVector, uint32_t* hidden_flag) {
 
     pre_seq_len_ = pre_seq_len;
     head_hidden_size_ = head_hidden_size;
-    kernel_size_ = kernel_dim;
-    max_col_ = max_col;
     hidden_flag_ = hidden_flag;
 
     query_layer = new Dense(input_dim, head_hidden_size, weightVector[0], flagVector[0], hidden_flag);
@@ -49,25 +46,23 @@ void SingleHeadSelfAttn::compute(std::size_t seq_len, uint32_t *input, uint32_t 
 
     std::cout << "Rearranged method" << std::endl;
     Transpose::transpose_rearranged(key_layer_out, key_transposed_layer_out, head_hidden_size_,
-                                    pre_seq_len_, kernel_size_, max_col_);
+                                    pre_seq_len_);
 
     auto* sparseMatrixMultiplier = new SparseMatrixMultiplier(query_layer_out, attention_scores,
                                                                head_hidden_size_, seq_len, seq_len,
-                                                               kernel_size_, max_col_,
                                                                Format::NON_PRUNED
                                                                );
     sparseMatrixMultiplier->compute(nullptr, nullptr, key_transposed_layer_out);
-    smmComputeRearranged(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, nullptr, head_hidden_size_,
-                            seq_len, false, hidden_flag_);
-    softmax->computeRearranged(attention_scores, seq_len, kernel_size_);
+//    smmComputeRearranged(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, nullptr, head_hidden_size_,
+//                            seq_len, false, hidden_flag_);
+    softmax->computeRearranged(attention_scores, seq_len);
     sparseMatrixMultiplier = new SparseMatrixMultiplier(attention_scores, output,
                                                         seq_len, head_hidden_size_, seq_len,
-                                                        kernel_size_, max_col_,
                                                         Format::NON_PRUNED
                                                         );
     sparseMatrixMultiplier->compute(nullptr, nullptr, value_layer_out);
-    smmComputeRearranged(seq_len, attention_scores, output, value_layer_out, nullptr, seq_len, head_hidden_size_,
-                         false, hidden_flag_);
+//    smmComputeRearranged(seq_len, attention_scores, output, value_layer_out, nullptr, seq_len, head_hidden_size_,
+//                         false, hidden_flag_);
 
     softmax->post_softmax(output, seq_len, head_hidden_size_);
 }

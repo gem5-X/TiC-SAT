@@ -11,13 +11,9 @@
 #include "../transformer_layers/debuggerFunctions.h"
 #include <thread>
 
-#ifdef SIMD
-#include <arm_neon.h>
-#endif
-
 #define W_DATA 4
 #define KERNEL_DIM SA_SIZE
-#define MAX_COL (SA_SIZE/W_DATA)
+//#define MAX_COL (SA_SIZE/W_DATA)
 #define mem2d(data, data_len, row, col)   data[((row)*(data_len))+(col)]
 
 
@@ -141,136 +137,6 @@ uint32_t smmStream(uint32_t rn, int tid) {
 }
 
 #endif
-
-
-void smmCompute(std::size_t seq_len, const uint32_t *input, uint32_t *output, uint32_t *weights, uint32_t *flag,
-                std::size_t input_size_, std::size_t output_size_, bool sparse) {
-
-    int ROWS_IN_BLOCK = std::min(128, (int) (seq_len));
-    int rowMaxL1 = std::min(64, (int) (input_size_)) / KERNEL_DIM;
-    int ratio = 64 / std::min(64, (int) (input_size_));
-    int colMaxL1 = std::min(32 * ratio, (int) (output_size_)) / KERNEL_DIM;
-
-    int ROWS_IN_L2 = std::min(512 / ROWS_IN_BLOCK, (int) ceil((float) (seq_len) / (float) ROWS_IN_BLOCK));
-    int rowMaxL2 = std::min(256, (int) (input_size_)) / KERNEL_DIM / rowMaxL1;
-    int colMaxL2 = std::min(256, (int) (output_size_)) / KERNEL_DIM / colMaxL1;
-
-    auto *flag_ptr = (bool *) (flag);
-    int counter = 0;
-    int total_counter =0;
-    omp_set_num_threads(CORE_NUM); // set number of threads in "parallel" blocks
-
-    int col_in_th = ROWS_IN_L2 / CORE_NUM;
-
-#pragma omp parallel
-    {
-        int omp_id = omp_get_thread_num();
-    for (int l2In = 0; l2In < (int) ceil((float) seq_len / (float) ROWS_IN_BLOCK / (float) ROWS_IN_L2); l2In++) {
-        for (int l2Row = 0; l2Row < (input_size_ / KERNEL_DIM) / rowMaxL2 / rowMaxL1; l2Row++) {
-            for (int l2Col = 0; l2Col < (output_size_ / KERNEL_DIM) / colMaxL2 / colMaxL1; l2Col++) {
-                for (int tileInL2 = omp_id*col_in_th; tileInL2 < (omp_id + 1) * col_in_th; tileInL2++) {
-                    for (int tileRowL2 = 0; tileRowL2 < rowMaxL2; tileRowL2++) {
-                        for (int tileColL2 = 0; tileColL2 < colMaxL2; tileColL2++) {
-                            for (int tileRowL1 = 0; tileRowL1 < rowMaxL1; tileRowL1++) {
-                                for (int tileColL1 = 0; tileColL1 < colMaxL1; tileColL1++) {
-                                    int tileRow = tileRowL2 * rowMaxL1 + tileRowL1;
-                                    int tileCol = tileColL2 * colMaxL1 + tileColL1;
-                                    int seqBlockIdx = l2In * ROWS_IN_L2 + tileInL2;
-                                    // Load the kernel with the corresponding weight
-                                    int rowStart = (l2Row * rowMaxL2 * rowMaxL1 + tileRow) * KERNEL_DIM;
-                                    int colStart = (l2Col * colMaxL2 * colMaxL1 + tileCol) * KERNEL_DIM / W_DATA;
-                                    int rowBlockSize = KERNEL_DIM;
-                                    int colBlockSize = KERNEL_DIM / W_DATA;
-                                    uint32_t *wPtr = weights + rowStart * (output_size_ / W_DATA);
-//                                    if (sparse) {
-//                                        if (*(flag_ptr + rowStart * output_size_ / (KERNEL_DIM * KERNEL_DIM) +
-//                                              colStart / MAX_COL)) {
-//                                            continue;
-//                                        }
-//                                    }
-#ifdef LOAD_SKIP
-                                    bool non_zero_tile = false;
-                                    for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
-                                        for (int j = colStart; j < colStart + colBlockSize; j++) {
-                                            uint32_t weight = *(wPtr + j);
-                                            smmParamWrite(i - rowStart, j - colStart, weight);
-                                            non_zero_tile += (weight != 0x0);
-                                        }
-                                        wPtr += output_size_ / W_DATA;
-                                    }
-                                    total_counter ++;
-                                    if (!non_zero_tile && sparse) {
-                                        counter++;
-                                        continue;
-                                    }
-#else
-                                    for (int i = rowStart; i < rowStart + rowBlockSize; i++) {
-                                        for (int j = colStart; j < colStart + colBlockSize; j++) {
-                                            uint32_t weight = *(wPtr + j);
-                                            int weight_idx = (i - rowStart) * KERNEL_DIM + (j - colStart) * W_DATA;
-                                            smmParamWrite(weight_idx, weight, omp_id);
-                                        }
-                                        wPtr += output_size_ / W_DATA;
-                                    }
-#endif
-
-                                    // Process the multiplication
-                                    int base_col_idx = (l2Row * rowMaxL2 * rowMaxL1 + tileRow) * MAX_COL;
-                                    int seqBlockLen = std::min(ROWS_IN_BLOCK,
-                                                               (int) (seq_len - seqBlockIdx * ROWS_IN_BLOCK));
-                                    int outputIndex = 0;
-                                    uint32_t *outPtr = output + seqBlockIdx * ROWS_IN_BLOCK * (output_size_ / W_DATA);
-                                    uint32_t mult;
-                                    const uint32_t *inPtr =
-                                            input + base_col_idx + seqBlockIdx * ROWS_IN_BLOCK * (input_size_ / W_DATA);
-                                    for (int i = 0; i < seqBlockLen; i++) {
-                                        for (int j = 0; j < MAX_COL; j++) {
-                                            if (j == MAX_COL - 1) {
-                                                mult = smmStream(*(inPtr + j), omp_id);
-                                            } else {
-                                                mult = smmQueue(j % MAX_COL, *(inPtr + j), omp_id);
-                                            }
-
-                                            if ((i * MAX_COL + j) >=
-                                                (MAX_COL * (2 * KERNEL_DIM - 1) -
-                                                 1)) {    // check if the output is valid
-                                                add8in32(
-                                                        mem2d(outPtr, output_size_ / W_DATA, outputIndex / colBlockSize,
-                                                              colStart + outputIndex % colBlockSize), mult);
-                                                outputIndex++;
-                                            }
-                                        }
-                                        inPtr += (input_size_ / W_DATA);
-                                    }
-                                    for (int i = seqBlockLen * MAX_COL;
-                                         i < MAX_COL * (seqBlockLen + 2 * KERNEL_DIM - 1) - 1; i++) {
-                                        if ((i % MAX_COL) == MAX_COL - 1) {
-                                            mult = smmStream(0, omp_id);
-                                        } else {
-                                            mult = smmQueue(i % MAX_COL, 0, omp_id);
-                                        }
-                                        if (i >= (MAX_COL * (2 * KERNEL_DIM - 1) - 1)) { // check if the output is valid
-                                            add8in32(mem2d(outPtr, output_size_ / W_DATA, outputIndex / colBlockSize,
-                                                           colStart + outputIndex % colBlockSize), mult);
-                                            outputIndex++;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    }
-#ifdef DEVELOP
-    std::cout << "Sparse : " << counter << " Out of : " << total_counter
-    << " So " << (float)counter / (float) total_counter << "%" << std::endl;
-    //    print_arr(output, seq_len, output_size_);
-    //    getchar();
-#endif
-}
 
 unsigned int *memory_rearrangement(uint32_t *weights, std::size_t output_size_, std::size_t input_size_) {
     auto rearranged = new uint32_t[output_size_ * input_size_ / W_DATA]();

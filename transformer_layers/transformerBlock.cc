@@ -17,8 +17,7 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
 
     for (int n =0; n< num_heads; n++){
         selfatten[n] = new SingleHeadSelfAttn(pre_seq_len, input_dim, head_hidden_size, weightVector+n*3,
-                                              flagVector+n*3,
-                                              kernelDim, maxCol, hidden_flag);
+                                              flagVector+n*3, hidden_flag);
     }
 
     condense = new Dense(num_heads* head_hidden_size, input_dim, weightVector[num_heads * 3],

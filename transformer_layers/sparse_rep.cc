@@ -3,9 +3,8 @@
 //
 
 #include "sparse_rep.h"
-#define MAX_COL (SA_SIZE/4)
 
-void fill_kernel(uint32_t* kernel, int kernel_size){
+void fill_sparse_kernel(uint32_t* kernel, int kernel_size){
     for(int i=0; i<kernel_size; i++){
         uint32_t result = 0;
         for (int j=0; j<4; j++){
@@ -249,7 +248,7 @@ void dense2csr_test() {
     int col_size = 32;
 
     uint32_t* kernel = new uint32_t [row_size*col_size/4]();
-    fill_kernel(kernel, row_size*col_size/4);
+    fill_sparse_kernel(kernel, row_size * col_size / 4);
 
     //print the dense format
     uint32_t *rowWise = new uint32_t [row_size*col_size/4]();
@@ -301,7 +300,7 @@ void dense2csc_test() {
     int col_size = 32;
 
     uint32_t* kernel = new uint32_t [row_size*col_size/4]();
-    fill_kernel(kernel, row_size*col_size/4);
+    fill_sparse_kernel(kernel, row_size * col_size / 4);
 
     //print the dense format
     uint32_t *rowWise = new uint32_t [row_size*col_size/4]();
@@ -354,7 +353,7 @@ void dense2metaData_test() {
     int col_size = 32;
 
     uint32_t* kernel = new uint32_t [row_size*col_size/4]();
-    fill_kernel(kernel, row_size*col_size/4);
+    fill_sparse_kernel(kernel, row_size * col_size / 4);
 
     //print the dense format
     uint32_t *rowWise = new uint32_t [row_size*col_size/4]();
@@ -410,7 +409,7 @@ void dense2interleavedMetaData_test() {
     uint metadata_block_size = (BLOCK_SIZE + 32 - 1) / 32;
 
     uint32_t* kernel = new uint32_t [row_size*col_size/4]();
-    fill_kernel(kernel, row_size*col_size/4);
+    fill_sparse_kernel(kernel, row_size * col_size / 4);
 
     //print the dense format
     uint32_t *rowWise = new uint32_t [row_size*col_size/4]();
@@ -455,9 +454,9 @@ void dense2interleavedMetaData_test() {
 
 
 //  create a main
-int main() {
-    dense2interleavedMetaData_test();
-    return 0;
-}
+//int main() {
+//    dense2interleavedMetaData_test();
+//    return 0;
+//}
 
 

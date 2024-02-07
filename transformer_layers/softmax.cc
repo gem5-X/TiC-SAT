@@ -36,25 +36,25 @@ void Softmax::compute(uint32_t *input, std::size_t seq_len){
     }
 }
 
-void Softmax::computeRearranged(uint32_t *input, std::size_t seq_len, std::size_t kernelDim) {
+void Softmax::computeRearranged(uint32_t *input, std::size_t seq_len) {
     // We assume that the input value are fixed-point with 2 bits of fraction.
     for (int i =0; i< seq_len; i++){
         int32_t sum = 0;
-        auto* input_uptr = ((uint8_t*) input) + i * kernelDim;
-        for (int j =0; j< seq_len / kernelDim; j++){
-            for (int k=0; k< kernelDim; k++) {
+        auto* input_uptr = ((uint8_t*) input) + i * KERNEL_DIM;
+        for (int j =0; j< seq_len / KERNEL_DIM; j++){
+            for (int k=0; k< KERNEL_DIM; k++) {
                 *(input_uptr+k) = lookup[(* (uint8_t *) (input_uptr+ k)) >> 3]; // divide by the sqrt od the d_q which is sqrt(64) -> 8
                 sum += *(input_uptr+k);
             }
-            input_uptr += seq_len* kernelDim;
+            input_uptr += seq_len* KERNEL_DIM;
         }
         sum = (sum==0) ? sum + 1 : sum;
-        input_uptr = ((uint8_t*) input) + i * kernelDim;
-        for (int j =0; j< seq_len / kernelDim; j++){
-            for (int k=0; k< kernelDim; k++) {
+        input_uptr = ((uint8_t*) input) + i * KERNEL_DIM;
+        for (int j =0; j< seq_len / KERNEL_DIM; j++){
+            for (int k=0; k< KERNEL_DIM; k++) {
                 *(input_uptr+k) = (uint8_t) ((*(input_uptr+k)) /(sum >> 8));
             }
-            input_uptr += seq_len* kernelDim;
+            input_uptr += seq_len* KERNEL_DIM;
         }
     }
 }
