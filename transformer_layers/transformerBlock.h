@@ -33,10 +33,6 @@ private:
     Dense* feedForward0;
     Dense* feedForward1;
 
-#ifndef REARRANGE
-    uint32_t* multihead_out_reshape;
-#endif
-
 };
 
 #endif //FVLLMONTITRANSFORMER_MULTIHEADSELFATTENTION_H

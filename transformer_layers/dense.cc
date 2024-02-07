@@ -26,23 +26,11 @@ Dense::~Dense() {
 }
 
 void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *output) {
-#ifdef REARRANGE //TODO: remove all the ifdef
-#ifdef SIMD
-    simdComputeRearranged(seq_len, input, output, weight, flag, input_size_, output_size_, true);
-#else
     auto* sparseMatrixMultiplier = new SparseMatrixMultiplier(input, output, input_size_, output_size_,
                                                               seq_len,kernel_dim_, max_col_, Format::DENSE);
     sparseMatrixMultiplier->compute((const int*)flag, nullptr, weight);
     // TODO: The above function is only for Format::DENSE. Need to add support for other formats.
 //    smmComputeRearranged(seq_len, input, output, weight, flag, input_size_, output_size_, true, hidden_flag_);
-#endif
-#else
-#ifdef SIMD
-    simdCompute(seq_len, input, output, weight, flag, input_size_, output_size_, true);
-#else
-    smmCompute(seq_len, input, output, weight, flag, input_size_, output_size_, true);
-#endif
-#endif
 }
 
 void Dense::addbias(std::size_t seq_len, uint32_t *output) {

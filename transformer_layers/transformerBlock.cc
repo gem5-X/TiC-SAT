@@ -28,10 +28,6 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
     condense_out = new uint32_t[pre_seq_len * input_dim >> 2]();
     intermediateFF = new uint32_t[pre_seq_len * ff_size >> 2]();
 
-#ifndef REARRANGE
-    multihead_out_reshape = new uint32_t[pre_seq_len * num_heads * head_hidden_size >> 2]();
-#endif
-
     addNorm = new AddNormalize(pre_seq_len, input_dim, kernelDim, maxCol);
     feedForward0 = new Dense(input_dim, ff_size, weightVector[num_heads * 3+ 1],
                              flagVector[num_heads * 3 + 1], hidden_flag);
@@ -49,21 +45,11 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
         selfatten[n]->compute(seq_len, input, multihead_out + n * (seq_len * head_hidden_size_ >> 2));
     }
 
-#ifndef REARRANGE
-    Transpose::multihead_transpose(multihead_out, multihead_out_reshape,
-                                   seq_len, head_hidden_size_ >> 2, num_heads_);
-    multihead_out = multihead_out_reshape;
-#endif
-
     std::cout << "Condense"  << std::endl;
     condense->compute(seq_len, multihead_out, condense_out);
 
     std::cout << "Add Norm"  << std::endl;
-#ifdef REARRANGE
     addNorm->computeRearranged(input, condense_out);
-#else
-    addNorm->compute(input, condense_out);
-#endif
 
     system("m5 dumpresetstats");
 
@@ -74,34 +60,8 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     feedForward1->compute(seq_len, intermediateFF, output);
 
     std::cout << "Add Norm"  << std::endl;
-#ifdef REARRANGE
+
     std::cout << "Add norm rearranged"  << std::endl;
     addNorm->computeRearranged(condense_out, output);
-#else
-    std::cout << "Add norm TiCSAT"  << std::endl;
-    addNorm->compute(condense_out, output);
-#endif
     system("m5 dumpresetstats");
-
-//    std::string filename = "kernel.bin";
-//#ifdef REARRANGE
-//    auto keyBlockWise = new uint32_t [seq_len* input_dim_ >> 2]();
-//    blockWise2RowWise(output, keyBlockWise, seq_len, input_dim_ >> 2);
-//    write_weight_to_file(filename, keyBlockWise, seq_len, input_dim_ /4);
-//#endif
-//    uint32_t rearrange[seq_len*input_dim_ >>2];
-//    read_weight_from_file(filename, rearrange, seq_len, input_dim_ >>2);
-//    unsigned int error_total = 0;
-//    for (int elem =0; elem < seq_len*input_dim_ >>2 ; elem++){
-//        unsigned int error = (output[elem] - rearrange[elem]);
-//        error_total += (error>0 ? error : -error);
-//        if (error){
-//#ifndef REARRANGE
-//            std::cout<< "ERROR: "<< elem << std::endl;
-//            printf("%x, %x\n", output[elem] , rearrange[elem]);
-//#endif
-//        }
-//    }
-//    std::cout<< "Total Error Output: " << error_total<<std::endl;
-
 }
