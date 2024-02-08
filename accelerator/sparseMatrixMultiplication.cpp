@@ -84,14 +84,18 @@ void SparseMatrixMultiplier::computeCSC(const int *col_ptr, const int *row_ind, 
     }
 }
 
-void SparseMatrixMultiplier::computeMetaData(const bool* m1, const bool* m2, const uint32_t *values){
+void SparseMatrixMultiplier::computeMetaData(const int* m1, const int* m2, const uint32_t *values){
     int row_in_w = (int)this->input_size_ / KERNEL_DIM;
     int col_in_w = (int)this->output_size_ / KERNEL_DIM;
 
     for (int i=0; i< col_in_w; i++){
-        if (!m1[i]) continue;
+        if (*m1 ++ == 0) {
+            continue;
+        }
         for (int j=0; j<row_in_w; j++){
-            if (!m2[j]) continue;
+            if (*m2++ == 0) {
+                continue;
+            }
             int row = j;
             int col = i;
             processMultiplication(row, col, values);
@@ -226,7 +230,7 @@ void SparseMatrixMultiplier::compute(const int *row_ptr, const int *col_ind, con
 
 void SparseMatrixMultiplier::compute(const int *row_ptr, const int *col_ind, const uint32_t *values) {
     if (this->format_ == Format::META_DATA) {
-        computeMetaData((const bool*)row_ptr, (const bool*)col_ind, values);
+        computeMetaData(row_ptr, col_ind, values);
     } else if (this->format_ == Format::INTERLEAVED) {
         computeInterleavedMetaData(values);    
     } else if (this->format_ == Format::WITH_FLAG) {

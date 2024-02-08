@@ -11,6 +11,6 @@
 #include "debuggerFunctions.h"
 
 
-void dense2metaData(uint32_t*&, int, int, uint32_t*, uint32_t*);
+void dense2metaData(uint32_t**, int, int, uint32_t*, uint32_t*);
 
 #endif //FVLLMONTITRANSFORMER_SPARSE_REP_H
