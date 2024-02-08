@@ -136,7 +136,7 @@ void SparseMatrixMultiplier::computeInterleavedMetaData(const uint32_t *values) 
     }
 }
 
-void SparseMatrixMultiplier::computeDense(uint32_t *flag, const uint32_t *values) {
+void SparseMatrixMultiplier::computeWithFlag(uint32_t *flag, const uint32_t *values) {
     int row_in_w = (int)this->input_size_ / KERNEL_DIM;
     int col_in_w = (int)this->output_size_ / KERNEL_DIM;
     int counter = 0;
@@ -184,7 +184,7 @@ void SparseMatrixMultiplier::computeDynamic(const uint32_t *values) {
             int row = j;
             int col = i;
             bool zero_tile = true;
-            for (int k = 0; k < KERNEL_DIM * MAX_COL; i++) {
+            for (int k = 0; k < KERNEL_DIM * MAX_COL; k++) {
                 if (values[k] != 0x0) { // check if the tile is zero
                     zero_tile = false;
                     break;  // if not, break
@@ -228,8 +228,8 @@ void SparseMatrixMultiplier::compute(const int *row_ptr, const int *col_ind, con
         computeMetaData((const bool*)row_ptr, (const bool*)col_ind, values);
     } else if (this->format_ == Format::INTERLEAVED) {
         computeInterleavedMetaData(values);    
-    } else if (this->format_ == Format::DENSE) {
-        computeDense((uint32_t*)row_ptr, values);
+    } else if (this->format_ == Format::WITH_FLAG) {
+        computeWithFlag((uint32_t *) row_ptr, values);
     } else if (this->format_ == Format::HIDDEN_KEY) {
         computeHiddenKey((uint32_t*)row_ptr, values);
     } else if (this->format_ == Format::DYNAMIC) {

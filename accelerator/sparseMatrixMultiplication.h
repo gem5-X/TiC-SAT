@@ -15,7 +15,7 @@
 enum Format {
     CSR,
     CSC,
-    DENSE,
+    WITH_FLAG,
     HIDDEN_KEY,
     DYNAMIC,
     NON_PRUNED,
@@ -38,7 +38,7 @@ private:
     void computeCSC(const int *col_ptr, const int *row_ind, const uint32_t **values);
     void computeMetaData(const bool* m1, const bool* m2, const uint32_t *values);
     void computeInterleavedMetaData(const uint32_t *values);
-    void computeDense(uint32_t *flag, const uint32_t *values);
+    void computeWithFlag(uint32_t *flag, const uint32_t *values);
     void computeHiddenKey(const uint32_t *hiddenKey, const uint32_t *values);
     void computeDynamic(const uint32_t *values);
     void computeNonPruned(const uint32_t *values);

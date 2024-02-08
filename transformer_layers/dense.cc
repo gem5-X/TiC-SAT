@@ -23,7 +23,7 @@ Dense::~Dense() {
 
 void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *output) {
     auto* sparseMatrixMultiplier = new SparseMatrixMultiplier(input, output, input_size_, output_size_,
-                                                              seq_len, Format::DENSE);
+                                                              seq_len, Format::WITH_FLAG);
     sparseMatrixMultiplier->compute((const int*)flag, nullptr, weight);
     // TODO: The above function is only for Format::DENSE. Need to add support for other formats.
 //    smmComputeRearranged(seq_len, input, output, weight, flag, input_size_, output_size_, true, hidden_flag_);

@@ -68,46 +68,6 @@ void fill_sparse_weight(uint32_t * kernel, uint32_t* sparse_flag, int n_row, int
     }
 }
 
-
-void remove_zero_tiles(uint32_t*& kernel, int n_row, int n_col) {
-    uint32_t * new_kernel;
-    new_kernel = new uint32_t [n_row * n_col]();
-    uint32_t * new_kernel_ptr = new_kernel;
-    int counter = 0;
-
-    for (int i = 0; i < n_row / KERNEL_DIM; i++) {
-        for (int j = 0; j < n_col / MAX_COL; j++) {
-            int tile_index = (i * (n_col / MAX_COL) + j) * KERNEL_DIM * MAX_COL;
-            bool all_zeros = true;
-
-            for (int ii = 0; ii < KERNEL_DIM; ii++) {
-                for (int jj = 0; jj < MAX_COL; jj++) {
-                    uint32_t value = kernel[tile_index + ii * MAX_COL + jj];
-                    if (value != 0) {
-                        all_zeros = false;
-                        break;
-                    }
-                }
-                if (!all_zeros) {
-                    break;
-                }
-            }
-
-            if (!all_zeros) {
-                for (int ii = 0; ii < KERNEL_DIM; ii++) {
-                    for (int jj = 0; jj < MAX_COL; jj++) {
-                        *new_kernel ++ = kernel[tile_index + ii * MAX_COL + jj];
-                    }
-                }
-            }
-            else{
-                counter ++;
-            }
-        }
-    }
-    kernel = new_kernel_ptr;
-}
-
 void load_kernel_from_file(std::vector<uint32_t> &kernel, int n_row, int n_col, const char *filename) {
     std::ifstream file(filename, std::ios::binary);
     kernel.resize(n_row * n_col);
