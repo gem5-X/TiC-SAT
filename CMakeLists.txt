@@ -14,4 +14,4 @@ file(GLOB transformer_SRC
         "accelerator/systolic_m2m.cc"
         )
 
-add_executable(FvllMontiTransformer transformer.cpp ${transformer_SRC})
+add_executable(FvllMontiTransformer test_sparse_rep.cpp ${transformer_SRC})
