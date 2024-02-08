@@ -115,8 +115,8 @@ int dense2csc(uint32_t* kernel, int n_row, int n_col,
     return nnz;
 }
 
-void dense2metaData(uint32_t* kernel, int n_row, int n_col,
-                   bool* m1, bool* m2, uint32_t* values){
+void dense2metaData(uint32_t*& kernel, int n_row, int n_col,
+                    uint32_t* m1, uint32_t* m2){
     //parameters:
     //kernel: dense matrix
     //n_row: number of rows
@@ -125,20 +125,21 @@ void dense2metaData(uint32_t* kernel, int n_row, int n_col,
     //m2: metadata2 (Block Level)
     //values: Non-zero-blocks
 
+    uint32_t * new_kernel;
+    new_kernel = new uint32_t [n_row * n_col]();
+    uint32_t * new_kernel_ptr = new_kernel;
+
     int m2StartIndex = 0;
     bool columnAllZeros;
     for (int j = 0; j < n_col / MAX_COL; j++) {
         columnAllZeros = true;
         for (int i = 0; i < n_row / SA_SIZE; i++) {
             int tile_index = (j * (n_row / SA_SIZE) + i) * SA_SIZE * MAX_COL;
-            std::cout << std::dec << "tile index : "<<tile_index << "\t";
-            std::cout << std::hex << kernel[tile_index] <<std::endl;
             bool tileAllZeros = true;
 
             for (int ii = 0; ii < SA_SIZE; ii++) {
                 for (int jj = 0; jj < MAX_COL; jj++) {
                     uint32_t value = kernel[tile_index + ii * MAX_COL + jj];
-                    std::cout << std::hex << value << ", ";
                     if (value != 0) {
                         tileAllZeros = false;
                         break;
@@ -148,7 +149,6 @@ void dense2metaData(uint32_t* kernel, int n_row, int n_col,
                     break;
                 }
             }
-            std::cout << std::endl;
             m2[m2StartIndex + i] = !tileAllZeros;
             if (!tileAllZeros) {
                 columnAllZeros = false;
@@ -156,7 +156,7 @@ void dense2metaData(uint32_t* kernel, int n_row, int n_col,
                 // values only contains non-zero blocks
                 for (int ii = 0; ii < SA_SIZE; ii++) {
                     for (int jj = 0; jj < MAX_COL; jj++) {
-                        *values ++ = kernel[tile_index + ii * MAX_COL + jj];
+                        *new_kernel ++ = kernel[tile_index + ii * MAX_COL + jj];
                     }
                 }
             }
@@ -169,6 +169,8 @@ void dense2metaData(uint32_t* kernel, int n_row, int n_col,
             m2StartIndex += n_row / SA_SIZE;
         }
     }
+
+    kernel = new_kernel_ptr;
 }
 
 void dense2interleavedMetaData(uint32_t* kernel, int n_row, int n_col, uint32_t* values, uint* size) {
@@ -450,14 +452,12 @@ void dense2metaData_test() {
     }
 
 
-    bool*m1;
-    bool* m2;
-    uint32_t* values;
-   values = new uint32_t [(row_size * col_size/4)]();
-    m1 = new bool [(col_size/SA_SIZE)]();
-    m2 = new bool [((row_size * col_size) / (SA_SIZE* SA_SIZE))]();
+    uint32_t* m1;
+    uint32_t* m2;
+    m1 = new uint32_t [(col_size/SA_SIZE)]();
+    m2 = new uint32_t [((row_size * col_size) / (SA_SIZE* SA_SIZE))]();
 
-    dense2metaData(kernel, row_size, col_size/4, m1, m2, values);
+    dense2metaData(kernel, row_size, col_size/4, m1, m2); // TODO: it is changed! check it again.
 
     std::cout << std::dec << std::endl;
     std::cout << "m1:" << std::endl;
@@ -475,7 +475,7 @@ void dense2metaData_test() {
     //print the values
     std::cout << "values:" << std::endl;
     for (int i = 0; i < row_size * col_size / 4; i++) {
-            std::cout << std::hex << values[i] << " ";
+            std::cout << std::hex << kernel[i] << " ";
         }
     std::cout << std::endl;
 

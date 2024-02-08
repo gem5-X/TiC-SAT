@@ -32,10 +32,12 @@ void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *outpu
     else if (format_ == Format::HIDDEN_KEY) {
         sparseMatrixMultiplier->compute((const int*)hidden_flag_, nullptr, weight);
     }
+    else if (format_ == Format::META_DATA){
+        sparseMatrixMultiplier->compute((const int*)flag, (const int*)hidden_flag_, weight);
+    }
     else {
         throw std::runtime_error("Unsupported format");
     }
-    // TODO: The above function is only for Format::DENSE. Need to add support for other formats.
 //    smmComputeRearranged(seq_len, input, output, weight, flag, input_size_, output_size_, true, hidden_flag_);
 }
 
