@@ -9,7 +9,7 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
                                    std::size_t num_heads, std::size_t ff_size, uint32_t ** weightVector,
                                    uint32_t ** flagVector,
                                    std::size_t kernelDim, std::size_t maxCol,
-                                   uint32_t* hidden_flag) {
+                                   uint32_t* hidden_flag, Format sparseFormat) {
 
     num_heads_ = num_heads;
     head_hidden_size_ = head_hidden_size;
@@ -17,11 +17,11 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
 
     for (int n =0; n< num_heads; n++){
         selfatten[n] = new SingleHeadSelfAttn(pre_seq_len, input_dim, head_hidden_size, weightVector+n*3,
-                                              flagVector+n*3, hidden_flag);
+                                              flagVector+n*3, hidden_flag, sparseFormat);
     }
 
     condense = new Dense(num_heads* head_hidden_size, input_dim, weightVector[num_heads * 3],
-                         flagVector[num_heads * 3], hidden_flag);
+                         flagVector[num_heads * 3], hidden_flag, sparseFormat);
 
     multihead_out = new uint32_t[pre_seq_len * num_heads * head_hidden_size >> 2]();
     condense_out = new uint32_t[pre_seq_len * input_dim >> 2]();
@@ -29,9 +29,9 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
 
     addNorm = new AddNormalize(pre_seq_len, input_dim, kernelDim, maxCol);
     feedForward0 = new Dense(input_dim, ff_size, weightVector[num_heads * 3+ 1],
-                             flagVector[num_heads * 3 + 1], hidden_flag);
+                             flagVector[num_heads * 3 + 1], hidden_flag, sparseFormat);
     feedForward1 = new Dense(ff_size, input_dim, weightVector[num_heads * 3 + 2],
-                             flagVector[num_heads * 3 + 2], hidden_flag);
+                             flagVector[num_heads * 3 + 2], hidden_flag, sparseFormat);
 }
 
 TransformerBlock::~TransformerBlock() = default;

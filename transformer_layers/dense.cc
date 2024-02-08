@@ -5,7 +5,7 @@
 #include <iostream>
 
 Dense::Dense(std::size_t input_size, std::size_t output_size, uint32_t *weightDense, uint32_t *flagDense,
-             uint32_t* hidden_flag) {
+             const uint32_t* hidden_flag, Format format) {
     input_size_ = input_size;
     output_size_ = output_size;
     std::cout << "Input Size : " << input_size_ << std::endl;
@@ -14,6 +14,7 @@ Dense::Dense(std::size_t input_size, std::size_t output_size, uint32_t *weightDe
     flag = flagDense;
     bias = nullptr;
     hidden_flag_ = hidden_flag;
+    format_ = format;
 }
 // TODO: The above constructor is only for Format::DENSE. Need to add support for other formats.
 //  Different constructors for different formats.
@@ -23,8 +24,17 @@ Dense::~Dense() {
 
 void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *output) {
     auto* sparseMatrixMultiplier = new SparseMatrixMultiplier(input, output, input_size_, output_size_,
-                                                              seq_len, Format::WITH_FLAG);
-    sparseMatrixMultiplier->compute((const int*)flag, nullptr, weight);
+                                                              seq_len, format_);
+    if (format_ == Format::WITH_FLAG || format_ == Format::DYNAMIC ||
+    format_ == Format::NON_PRUNED ) {
+        sparseMatrixMultiplier->compute((const int*)flag, nullptr, weight);
+    }
+    else if (format_ == Format::HIDDEN_KEY) {
+        sparseMatrixMultiplier->compute((const int*)hidden_flag_, nullptr, weight);
+    }
+    else {
+        throw std::runtime_error("Unsupported format");
+    }
     // TODO: The above function is only for Format::DENSE. Need to add support for other formats.
 //    smmComputeRearranged(seq_len, input, output, weight, flag, input_size_, output_size_, true, hidden_flag_);
 }

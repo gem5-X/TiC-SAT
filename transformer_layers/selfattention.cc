@@ -6,15 +6,16 @@
 #include "debuggerFunctions.h"
 
 SingleHeadSelfAttn::SingleHeadSelfAttn(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size,
-                                       uint32_t **weightVector, uint32_t **flagVector, uint32_t* hidden_flag) {
+                                       uint32_t **weightVector, uint32_t **flagVector, uint32_t* hidden_flag,
+                                       Format sparseFormat) {
 
     pre_seq_len_ = pre_seq_len;
     head_hidden_size_ = head_hidden_size;
     hidden_flag_ = hidden_flag;
 
-    query_layer = new Dense(input_dim, head_hidden_size, weightVector[0], flagVector[0], hidden_flag);
-    key_layer = new Dense(input_dim, head_hidden_size, weightVector[1], flagVector[1], hidden_flag);
-    value_layer = new Dense(input_dim, head_hidden_size, weightVector[2], flagVector[2], hidden_flag);
+    query_layer = new Dense(input_dim, head_hidden_size, weightVector[0], flagVector[0], hidden_flag, sparseFormat);
+    key_layer = new Dense(input_dim, head_hidden_size, weightVector[1], flagVector[1], hidden_flag, sparseFormat);
+    value_layer = new Dense(input_dim, head_hidden_size, weightVector[2], flagVector[2], hidden_flag, sparseFormat);
     softmax = new Softmax();
 
     query_layer_out = new uint32_t[pre_seq_len * head_hidden_size >> 2]();

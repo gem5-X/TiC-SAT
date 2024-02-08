@@ -159,6 +159,7 @@ void SparseMatrixMultiplier::computeWithFlag(uint32_t *flag, const uint32_t *val
 
 
 void SparseMatrixMultiplier::computeHiddenKey(const uint32_t *hiddenKey, const uint32_t *values) {
+    std::cout << "Hidden key" << std::endl;
     int row_in_w = (int)this->input_size_ / KERNEL_DIM;
     int col_in_w = (int)this->output_size_ / KERNEL_DIM;
     for (int i=0; i< col_in_w; i++){
