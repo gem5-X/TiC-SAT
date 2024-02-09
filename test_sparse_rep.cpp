@@ -10,7 +10,7 @@
 
 int main(){
     std::string dir_name = "/home/alireza/CLionProjects/FvllMontiTransformer/data16";
-    Format format = Format::CSC;
+    Format format = Format::CSR;
     const uint32_t hidden_flag = 0xAAAAAAAA;
     uint32_t* tensor_in = new uint32_t [D_SEQ * D_MODEL >> 2];
     loadWeight(-1, -1, D_SEQ * D_MODEL >> 2, tensor_in, 0, dir_name, nullptr);
@@ -45,6 +45,16 @@ int main(){
         values = new uint32_t* [(D_MODEL * D_Q) / (KERNEL_DIM * KERNEL_DIM)]();
 
         int nnz = dense2csc(query_kernel, D_MODEL, D_Q >> 2, col_ptr, row_ptr, values);
+
+        std::cout << std::dec;
+        std::cout<< "nnz: " << nnz << " out of " << (D_MODEL * D_Q) / (KERNEL_DIM * KERNEL_DIM) <<  std::endl;
+    }
+    else if (format == Format::CSR){
+        row_ptr = new int [D_MODEL / KERNEL_DIM + 1]();
+        col_ptr = new int [(D_MODEL * D_Q) / (KERNEL_DIM * KERNEL_DIM)]();
+        values = new uint32_t* [(D_MODEL * D_Q) / (KERNEL_DIM * KERNEL_DIM)]();
+
+        int nnz = dense2csr(query_kernel, D_MODEL, D_Q >> 2, col_ptr, row_ptr, values);
 
         std::cout << std::dec;
         std::cout<< "nnz: " << nnz << " out of " << (D_MODEL * D_Q) / (KERNEL_DIM * KERNEL_DIM) <<  std::endl;

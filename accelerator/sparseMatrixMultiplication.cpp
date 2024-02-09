@@ -60,7 +60,7 @@ void SparseMatrixMultiplier::processMultiplication(int row, int col, const uint3
 
 }
 
-void SparseMatrixMultiplier::computeCSR(const int *row_ptr, const int *col_ind, const uint32_t **values) {
+void SparseMatrixMultiplier::computeCSR(const int *col_ind, const int *row_ptr, const uint32_t **values) {
     int row_in_w = (int)this->input_size_ / KERNEL_DIM;
 
     for (int i=0; i< row_in_w; i++){
@@ -222,7 +222,7 @@ void SparseMatrixMultiplier::computeNonPruned(const uint32_t *values) {
 
 void SparseMatrixMultiplier::compute(const int *col_ptr, const int *row_ptr, const uint32_t **values) {
     if (this->format_ == Format::CSR) {
-        computeCSR(row_ptr, col_ptr, values);
+        computeCSR(col_ptr, row_ptr, values);
     } else if (this->format_ == Format::CSC) {
         computeCSC(col_ptr, row_ptr, values);
     }
