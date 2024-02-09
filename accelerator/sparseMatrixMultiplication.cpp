@@ -4,17 +4,14 @@
 #include "smm_gem.h"
 #include "sparseMatrixMultiplication.h"
 
-SparseMatrixMultiplier::SparseMatrixMultiplier(uint32_t *input, uint32_t *output, std::size_t input_size_,
-                                               std::size_t output_size_, int seq_len, Format format){
-    this->input = input;
-    this->output = output;
+SparseMatrixMultiplier::SparseMatrixMultiplier(std::size_t input_size_, std::size_t output_size_, int seq_len, Format format){
     this->input_size_ = input_size_;
     this->output_size_ = output_size_;
     this->seq_len = seq_len;
     this->format_ = format;
 }
 
-void SparseMatrixMultiplier::processMultiplication(int row, int col, const uint32_t *values) {
+void SparseMatrixMultiplier::processMultiplication(uint32_t *input, uint32_t *output, int row, int col, const uint32_t *values) {
     int rowBlockSize = KERNEL_DIM;
     int colBlockSize = MAX_COL;
     int W_DATA = KERNEL_DIM/ MAX_COL;
@@ -60,31 +57,34 @@ void SparseMatrixMultiplier::processMultiplication(int row, int col, const uint3
 
 }
 
-void SparseMatrixMultiplier::computeCSR(const int *col_ind, const int *row_ptr, const uint32_t **values) {
+void SparseMatrixMultiplier::computeCSR(uint32_t *input, uint32_t *output,
+                                        const int *col_ind, const int *row_ptr, const uint32_t **values) {
     int row_in_w = (int)this->input_size_ / KERNEL_DIM;
 
     for (int i=0; i< row_in_w; i++){
         for (int j=row_ptr[i]; j<row_ptr[i+1]; j++){
             int row = i;
             int col = col_ind[j];
-            processMultiplication(row, col, values[j]);
+            processMultiplication(input, output, row, col, values[j]);
         }
     }
 }
 
-void SparseMatrixMultiplier::computeCSC(const int *col_ptr, const int *row_ind, const uint32_t **values) {
+void SparseMatrixMultiplier::computeCSC(uint32_t *input, uint32_t *output,
+                                        const int *col_ptr, const int *row_ind, const uint32_t **values) {
     int col_in_w = (int)this->output_size_ / KERNEL_DIM;
 
     for (int i=0; i< col_in_w; i++){
         for (int j=col_ptr[i]; j<col_ptr[i+1]; j++){
             int row = row_ind[j];
             int col = i;
-            processMultiplication(row, col, values[j]);
+            processMultiplication(input, output, row, col, values[j]);
         }
     }
 }
 
-void SparseMatrixMultiplier::computeMetaData(const int* m1, const int* m2, const uint32_t *values){
+void SparseMatrixMultiplier::computeMetaData(uint32_t *input, uint32_t *output,
+                                             const int* m1, const int* m2, const uint32_t *values){
     int row_in_w = (int)this->input_size_ / KERNEL_DIM;
     int col_in_w = (int)this->output_size_ / KERNEL_DIM;
 
@@ -98,13 +98,14 @@ void SparseMatrixMultiplier::computeMetaData(const int* m1, const int* m2, const
             }
             int row = j;
             int col = i;
-            processMultiplication(row, col, values);
+            processMultiplication(input, output, row, col, values);
             values += KERNEL_DIM * MAX_COL;
         }
     }
 }
 
-void SparseMatrixMultiplier::computeInterleavedMetaData(const uint32_t *values) {
+void SparseMatrixMultiplier::computeInterleavedMetaData(uint32_t *input, uint32_t *output,
+                                                        const uint32_t *values) {
     int row_in_w = (int)this->input_size_ / KERNEL_DIM;
     int col_in_w = (int)this->output_size_ / KERNEL_DIM;
 
@@ -134,13 +135,14 @@ void SparseMatrixMultiplier::computeInterleavedMetaData(const uint32_t *values) 
                 continue;
             }
             int col = i;
-            processMultiplication(row++, col, values);
+            processMultiplication(input, output, row++, col, values);
             values += KERNEL_DIM * MAX_COL;
         }
     }
 }
 
-void SparseMatrixMultiplier::computeWithFlag(uint32_t *flag, const uint32_t *values) {
+void SparseMatrixMultiplier::computeWithFlag(uint32_t *input, uint32_t *output,
+                                             uint32_t *flag, const uint32_t *values) {
     int row_in_w = (int)this->input_size_ / KERNEL_DIM;
     int col_in_w = (int)this->output_size_ / KERNEL_DIM;
     int counter = 0;
@@ -155,14 +157,15 @@ void SparseMatrixMultiplier::computeWithFlag(uint32_t *flag, const uint32_t *val
             }
             int row = j;
             int col = i;
-            processMultiplication(row, col, values);
+            processMultiplication(input, output, row, col, values);
             values += KERNEL_DIM * MAX_COL;
         }
     }
 }
 
 
-void SparseMatrixMultiplier::computeHiddenKey(const uint32_t *hiddenKey, const uint32_t *values) {
+void SparseMatrixMultiplier::computeHiddenKey(uint32_t *input, uint32_t *output,
+                                              const uint32_t *hiddenKey, const uint32_t *values) {
     std::cout << "Hidden key" << std::endl;
     int row_in_w = (int)this->input_size_ / KERNEL_DIM;
     int col_in_w = (int)this->output_size_ / KERNEL_DIM;
@@ -174,14 +177,15 @@ void SparseMatrixMultiplier::computeHiddenKey(const uint32_t *hiddenKey, const u
             }
             int row = j;
             int col = i;
-            processMultiplication(row, col, values);
+            processMultiplication(input, output, row, col, values);
             values += KERNEL_DIM * MAX_COL;
         }
     }
 }
 
 
-void SparseMatrixMultiplier::computeDynamic(const uint32_t *values) {
+void SparseMatrixMultiplier::computeDynamic(uint32_t *input, uint32_t *output,
+                                            const uint32_t *values) {
     int row_in_w = (int)this->input_size_ / KERNEL_DIM;
     int col_in_w = (int)this->output_size_ / KERNEL_DIM;
     for (int i=0; i< col_in_w; i++){
@@ -200,47 +204,50 @@ void SparseMatrixMultiplier::computeDynamic(const uint32_t *values) {
                 continue;
             }
 
-            processMultiplication(row, col, values);
+            processMultiplication(input, output, row, col, values);
             values += KERNEL_DIM * MAX_COL;
         }
     }
 }
 
-void SparseMatrixMultiplier::computeNonPruned(const uint32_t *values) {
+void SparseMatrixMultiplier::computeNonPruned(uint32_t *input, uint32_t *output,
+                                              const uint32_t *values) {
     int row_in_w = (int)this->input_size_ / KERNEL_DIM;
     int col_in_w = (int)this->output_size_ / KERNEL_DIM;
     for (int i=0; i< col_in_w; i++){
         for (int j=0; j<row_in_w; j++){
             int row = j;
             int col = i;
-            processMultiplication(row, col, values);
+            processMultiplication(input, output, row, col, values);
             values += KERNEL_DIM * MAX_COL;
         }
     }
 }
 
 
-void SparseMatrixMultiplier::compute(const int *col_ptr, const int *row_ptr, const uint32_t **values) {
+void SparseMatrixMultiplier::compute(uint32_t *input, uint32_t *output,
+                                     const int *col_ptr, const int *row_ptr, const uint32_t **values) {
     if (this->format_ == Format::CSR) {
-        computeCSR(col_ptr, row_ptr, values);
+        computeCSR(input, output, col_ptr, row_ptr, values);
     } else if (this->format_ == Format::CSC) {
-        computeCSC(col_ptr, row_ptr, values);
+        computeCSC(input, output, col_ptr, row_ptr, values);
     }
 }
 
-void SparseMatrixMultiplier::compute(const int *row_ptr, const int *col_ind, const uint32_t *values) {
+void SparseMatrixMultiplier::compute(uint32_t *input, uint32_t *output,
+                                     const int *row_ptr, const int *col_ind, const uint32_t *values) {
     if (this->format_ == Format::META_DATA) {
-        computeMetaData(row_ptr, col_ind, values);
+        computeMetaData(input, output, row_ptr, col_ind, values);
     } else if (this->format_ == Format::INTERLEAVED) {
-        computeInterleavedMetaData(values);    
+        computeInterleavedMetaData(input, output, values);
     } else if (this->format_ == Format::WITH_FLAG) {
-        computeWithFlag((uint32_t *) row_ptr, values);
+        computeWithFlag(input, output, (uint32_t *) row_ptr, values);
     } else if (this->format_ == Format::HIDDEN_KEY) {
-        computeHiddenKey((uint32_t*)row_ptr, values);
+        computeHiddenKey(input, output, (uint32_t*)row_ptr, values);
     } else if (this->format_ == Format::DYNAMIC) {
-        computeDynamic(values);
+        computeDynamic(input, output, values);
     } else if (this->format_ == Format::NON_PRUNED) {
-        computeNonPruned(values);
+        computeNonPruned(input, output, values);
     }
 }
 

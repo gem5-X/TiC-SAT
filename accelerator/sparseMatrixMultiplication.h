@@ -25,30 +25,28 @@ enum Format {
 
 class SparseMatrixMultiplier {
 private:
-    uint32_t *input;
-    uint32_t *output;
     std::size_t input_size_;
     std::size_t output_size_;
     int seq_len;
 
     Format format_;
 
-    void processMultiplication(int row, int col, const uint32_t *values);
-    void computeCSR(const int *row_ptr, const int *col_ind, const uint32_t **values);
-    void computeCSC(const int *col_ptr, const int *row_ind, const uint32_t **values);
-    void computeMetaData(const int* m1, const int* m2, const uint32_t *values);
-    void computeInterleavedMetaData(const uint32_t *values);
-    void computeWithFlag(uint32_t *flag, const uint32_t *values);
-    void computeHiddenKey(const uint32_t *hiddenKey, const uint32_t *values);
-    void computeDynamic(const uint32_t *values);
-    void computeNonPruned(const uint32_t *values);
+    void processMultiplication(uint32_t *input, uint32_t *output, int row, int col, const uint32_t *values);
+    void computeCSR(uint32_t *input, uint32_t *output, const int *row_ptr, const int *col_ind, const uint32_t **values);
+    void computeCSC(uint32_t *input, uint32_t *output, const int *col_ptr, const int *row_ind, const uint32_t **values);
+    void computeMetaData(uint32_t *input, uint32_t *output, const int* m1, const int* m2, const uint32_t *values);
+    void computeInterleavedMetaData(uint32_t *input, uint32_t *output, const uint32_t *values);
+    void computeWithFlag(uint32_t *input, uint32_t *output, uint32_t *flag, const uint32_t *values);
+    void computeHiddenKey(uint32_t *input, uint32_t *output, const uint32_t *hiddenKey, const uint32_t *values);
+    void computeDynamic(uint32_t *input, uint32_t *output, const uint32_t *values);
+    void computeNonPruned(uint32_t *input, uint32_t *output, const uint32_t *values);
 
 public:
-    SparseMatrixMultiplier(uint32_t *input, uint32_t *output, std::size_t input_size_,
+    SparseMatrixMultiplier(std::size_t input_size_,
                            std::size_t output_size_, int seq_len, Format format);
 
-    void compute(const int *, const int *, const uint32_t **values);
-    void compute(const int *, const int *, const uint32_t *values);
+    void compute(uint32_t *, uint32_t *, const int *, const int *, const uint32_t **values);
+    void compute(uint32_t *, uint32_t *, const int *, const int *, const uint32_t *values);
 };
 
 

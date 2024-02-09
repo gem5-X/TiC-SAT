@@ -49,21 +49,18 @@ void SingleHeadSelfAttn::compute(std::size_t seq_len, uint32_t *input, uint32_t 
     Transpose::transpose_rearranged(key_layer_out, key_transposed_layer_out, head_hidden_size_,
                                     pre_seq_len_);
 
-    auto* sparseMatrixMultiplier = new SparseMatrixMultiplier(query_layer_out, attention_scores,
-                                                               head_hidden_size_, seq_len, seq_len,
+    auto* sparseMatrixMultiplier = new SparseMatrixMultiplier(head_hidden_size_, seq_len, seq_len,
                                                                Format::NON_PRUNED
                                                                );
-    sparseMatrixMultiplier->compute(nullptr, nullptr, key_transposed_layer_out);
-//    smmComputeRearranged(seq_len, query_layer_out, attention_scores, key_transposed_layer_out, nullptr, head_hidden_size_,
-//                            seq_len, false, hidden_flag_);
+    sparseMatrixMultiplier->compute(query_layer_out, attention_scores,
+                                    nullptr, nullptr, key_transposed_layer_out);
+
     softmax->computeRearranged(attention_scores, seq_len);
-    sparseMatrixMultiplier = new SparseMatrixMultiplier(attention_scores, output,
-                                                        seq_len, head_hidden_size_, seq_len,
+    sparseMatrixMultiplier = new SparseMatrixMultiplier(seq_len, head_hidden_size_, seq_len,
                                                         Format::NON_PRUNED
                                                         );
-    sparseMatrixMultiplier->compute(nullptr, nullptr, value_layer_out);
-//    smmComputeRearranged(seq_len, attention_scores, output, value_layer_out, nullptr, seq_len, head_hidden_size_,
-//                         false, hidden_flag_);
+    sparseMatrixMultiplier->compute(attention_scores, output,
+                                    nullptr, nullptr, value_layer_out);
 
     softmax->post_softmax(output, seq_len, head_hidden_size_);
 }

@@ -10,7 +10,7 @@
 
 int main(){
     std::string dir_name = "/home/alireza/CLionProjects/FvllMontiTransformer/data16";
-    Format format = Format::CSR;
+    Format format = Format::WITH_FLAG;
     const uint32_t hidden_flag = 0xAAAAAAAA;
     uint32_t* tensor_in = new uint32_t [D_SEQ * D_MODEL >> 2];
     loadWeight(-1, -1, D_SEQ * D_MODEL >> 2, tensor_in, 0, dir_name, nullptr);
@@ -28,10 +28,6 @@ int main(){
     uint32_t** values;
 
     loadWeight(0, 0, head_qkv_size, query_kernel, 10, dir_name, &hidden_flag);
-    // print the kernel
-//    for (int i = 0; i < D_Q* D_MODEL >> 2; i++){
-//        std::cout << std::hex << query_kernel[i] << " ";
-//    }
     // Change the representation of the query kernel
     if (format == Format::WITH_FLAG)
         remove_zero_tiles(query_kernel, D_MODEL, D_Q >> 2);
@@ -45,9 +41,6 @@ int main(){
         values = new uint32_t* [(D_MODEL * D_Q) / (KERNEL_DIM * KERNEL_DIM)]();
 
         int nnz = dense2csc(query_kernel, D_MODEL, D_Q >> 2, col_ptr, row_ptr, values);
-
-        std::cout << std::dec;
-        std::cout<< "nnz: " << nnz << " out of " << (D_MODEL * D_Q) / (KERNEL_DIM * KERNEL_DIM) <<  std::endl;
     }
     else if (format == Format::CSR){
         row_ptr = new int [D_MODEL / KERNEL_DIM + 1]();
@@ -55,9 +48,6 @@ int main(){
         values = new uint32_t* [(D_MODEL * D_Q) / (KERNEL_DIM * KERNEL_DIM)]();
 
         int nnz = dense2csr(query_kernel, D_MODEL, D_Q >> 2, col_ptr, row_ptr, values);
-
-        std::cout << std::dec;
-        std::cout<< "nnz: " << nnz << " out of " << (D_MODEL * D_Q) / (KERNEL_DIM * KERNEL_DIM) <<  std::endl;
     }
 
     loadWeight(0, 10, head_flag_size, query_flag, 10, dir_name, nullptr);

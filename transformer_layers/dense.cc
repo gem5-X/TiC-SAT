@@ -35,17 +35,17 @@ Dense::~Dense() {
 }
 
 void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *output) {
-    auto *sparseMatrixMultiplier = new SparseMatrixMultiplier(input, output, input_size_, output_size_,
+    auto *sparseMatrixMultiplier = new SparseMatrixMultiplier(input_size_, output_size_,
                                                               seq_len, format_);
     if (format_ == Format::WITH_FLAG || format_ == Format::DYNAMIC ||
         format_ == Format::NON_PRUNED) {
-        sparseMatrixMultiplier->compute((const int *) flag, nullptr, weight);
+        sparseMatrixMultiplier->compute(input, output, (const int *) flag, nullptr, weight);
     } else if (format_ == Format::HIDDEN_KEY) {
-        sparseMatrixMultiplier->compute((const int *) hidden_flag_, nullptr, weight);
+        sparseMatrixMultiplier->compute(input, output, (const int *) hidden_flag_, nullptr, weight);
     } else if (format_ == Format::META_DATA) {
-        sparseMatrixMultiplier->compute((const int *) flag, (const int *) hidden_flag_, weight);
+        sparseMatrixMultiplier->compute(input, output,(const int *) flag, (const int *) hidden_flag_, weight);
     } else if (format_ == Format::CSC || format_ == Format::CSR ) {
-        sparseMatrixMultiplier->compute((const int *)col_ptr_, (const int *)row_ptr_,
+        sparseMatrixMultiplier->compute( input, output, (const int *)col_ptr_, (const int *)row_ptr_,
                                         (const uint32_t**) values_);
     } else {
 
