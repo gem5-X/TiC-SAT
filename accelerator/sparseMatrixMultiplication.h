@@ -47,8 +47,8 @@ public:
     SparseMatrixMultiplier(uint32_t *input, uint32_t *output, std::size_t input_size_,
                            std::size_t output_size_, int seq_len, Format format);
 
-    void compute(const int *row_ptr, const int *col_ind, const uint32_t **values);
-    void compute(const int *row_ptr, const int *col_ind, const uint32_t *values);
+    void compute(const int *, const int *, const uint32_t **values);
+    void compute(const int *, const int *, const uint32_t *values);
 };
 
 

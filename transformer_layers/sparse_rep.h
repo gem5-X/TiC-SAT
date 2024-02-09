@@ -12,5 +12,6 @@
 
 
 void dense2metaData(uint32_t**, int, int, uint32_t*, uint32_t*);
+int dense2csc(uint32_t*, int, int, int*, int*, uint32_t**);
 
 #endif //FVLLMONTITRANSFORMER_SPARSE_REP_H

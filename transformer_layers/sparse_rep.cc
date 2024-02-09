@@ -69,7 +69,7 @@ int dense2csr(uint32_t* kernel, int n_row, int n_col,
 }
 
 int dense2csc(uint32_t* kernel, int n_row, int n_col,
-               uint32_t* col_ptr, uint32_t* row_ind, uint32_t** values) {
+               int* col_ptr, int* row_ind, uint32_t** values) {
     //parameters:
     //kernel: dense matrix
     //n_row: number of rows
@@ -85,14 +85,11 @@ int dense2csc(uint32_t* kernel, int n_row, int n_col,
     for (int i = 0; i < n_col / MAX_COL; i++) {
         for (int j = 0; j < n_row / SA_SIZE; j++) {
             int tile_index = (i * (n_row / SA_SIZE) + j) * SA_SIZE * MAX_COL;
-            std::cout << std::dec << "tile index : "<<tile_index << "\t";
-            std::cout << std::hex << kernel[tile_index] <<std::endl;
             bool all_zeros = true;
 
             for (int ii = 0; ii < SA_SIZE; ii++) {
                 for (int jj = 0; jj < MAX_COL; jj++) {
                     uint32_t value = kernel[tile_index + ii * MAX_COL + jj];
-                    std::cout << std::hex << value << ", ";
                     if (value != 0) {
                         all_zeros = false;
                         break;
@@ -102,7 +99,6 @@ int dense2csc(uint32_t* kernel, int n_row, int n_col,
                     break;
                 }
             }
-            std::cout <<    std::endl;
 
             if (!all_zeros) {
                 row_ind[nnz] = j;
@@ -398,11 +394,11 @@ void dense2csc_test() {
         std::cout << std::endl;
     }
 
-    uint32_t *col_ptr;
-    uint32_t* row_ind;
+    int *col_ptr;
+    int* row_ind;
     uint32_t** values;
-    col_ptr = new uint32_t [col_size / SA_SIZE + 1]();
-    row_ind = new uint32_t [(row_size * col_size) / (SA_SIZE * MAX_COL)]();
+    col_ptr = new int [col_size / SA_SIZE + 1]();
+    row_ind = new int [(row_size * col_size) / (SA_SIZE * MAX_COL)]();
     values = new uint32_t* [(row_size * col_size) / (SA_SIZE * MAX_COL)]();
 
     int nnz = dense2csc(kernel, row_size, col_size/4, col_ptr, row_ind, values);

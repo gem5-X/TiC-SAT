@@ -10,7 +10,7 @@
 
 int main(){
     std::string dir_name = "/home/alireza/CLionProjects/FvllMontiTransformer/data16";
-    Format format = Format::META_DATA;
+    Format format = Format::CSC;
     const uint32_t hidden_flag = 0xAAAAAAAA;
     uint32_t* tensor_in = new uint32_t [D_SEQ * D_MODEL >> 2];
     loadWeight(-1, -1, D_SEQ * D_MODEL >> 2, tensor_in, 0, dir_name, nullptr);
@@ -22,6 +22,11 @@ int main(){
     uint32_t* m1 = new uint32_t [D_Q / KERNEL_DIM]();
     uint32_t* m2 = new uint32_t [(D_Q * D_MODEL) / (KERNEL_DIM * KERNEL_DIM)]();
 
+    // Initialize the parameters for format::CSC or format::CSR
+    int* col_ptr;
+    int* row_ptr;
+    uint32_t** values;
+
     loadWeight(0, 0, head_qkv_size, query_kernel, 10, dir_name, &hidden_flag);
     // print the kernel
 //    for (int i = 0; i < D_Q* D_MODEL >> 2; i++){
@@ -32,15 +37,28 @@ int main(){
         remove_zero_tiles(query_kernel, D_MODEL, D_Q >> 2);
     else if (format == Format::HIDDEN_KEY)
         interleave_hidden_flag_zero_free(query_kernel, D_MODEL, D_Q >> 2, hidden_flag);
-    else if (format == Format::META_DATA){
+    else if (format == Format::META_DATA)
         dense2metaData(&query_kernel, D_MODEL, D_Q >> 2, m1, m2);
+    else if (format == Format::CSC){
+        col_ptr = new int [D_Q / KERNEL_DIM + 1]();
+        row_ptr = new int [(D_MODEL * D_Q) / (KERNEL_DIM * KERNEL_DIM)]();
+        values = new uint32_t* [(D_MODEL * D_Q) / (KERNEL_DIM * KERNEL_DIM)]();
+
+        int nnz = dense2csc(query_kernel, D_MODEL, D_Q >> 2, col_ptr, row_ptr, values);
+
+        std::cout << std::dec;
+        std::cout<< "nnz: " << nnz << " out of " << (D_MODEL * D_Q) / (KERNEL_DIM * KERNEL_DIM) <<  std::endl;
     }
 
     loadWeight(0, 10, head_flag_size, query_flag, 10, dir_name, nullptr);
     if (format == Format::META_DATA){
         auto testDense = new Dense(D_MODEL, D_Q, query_kernel, m1, (const uint32_t*)(m2), format);
         testDense->compute(D_SEQ, tensor_in, out);
-    }else{
+    } else if (format == Format::CSC || format == Format::CSR){
+        auto testDense = new Dense(D_MODEL, D_Q, query_kernel, col_ptr, row_ptr, values, format);
+        testDense->compute(D_SEQ, tensor_in, out);
+    }
+    else{
         auto testDense = new Dense(D_MODEL, D_Q, query_kernel, query_flag, &hidden_flag, format);
         testDense->compute(D_SEQ, tensor_in, out);
     }

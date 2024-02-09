@@ -220,11 +220,11 @@ void SparseMatrixMultiplier::computeNonPruned(const uint32_t *values) {
 }
 
 
-void SparseMatrixMultiplier::compute(const int *row_ptr, const int *col_ind, const uint32_t **values) {
+void SparseMatrixMultiplier::compute(const int *col_ptr, const int *row_ptr, const uint32_t **values) {
     if (this->format_ == Format::CSR) {
-        computeCSR(row_ptr, col_ind, values);
+        computeCSR(row_ptr, col_ptr, values);
     } else if (this->format_ == Format::CSC) {
-        computeCSC(row_ptr, col_ind, values);
+        computeCSC(col_ptr, row_ptr, values);
     }
 }
 
