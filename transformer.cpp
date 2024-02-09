@@ -3,6 +3,7 @@
 #include "transformer.h"
 #include "transformer_layers/debuggerFunctions.h"
 #include "transformer_layers/dataFunctions.h"
+#include "transformer_layers/sparse_rep.h"
 
 //#define KERNEL_DIM SA_SIZE
 //#define MAX_COL (SA_SIZE/4)
@@ -166,6 +167,24 @@ interleave_hidden_flag_zero_free(const_cast<uint32_t*&>(value_kernel), D_MODEL, 
     weightVec[NUM_HEAD*3 + 2] = ff1_kernel;
     flagVec[NUM_HEAD*3 + 2] = ff1_flag;
 
+    if (sparseFormat == Format::WITH_FLAG){
+        for (int i = 0; i < NUM_HEAD * 3; i++){
+            // call remove_zero_tiles for each weight vector in query, key and value
+            remove_zero_tiles(weightVec[i], (int) D_MODEL, (int) D_Q >> 2);
+        }
+        remove_zero_tiles(weightVec[NUM_HEAD*3], NUM_HEAD * D_Q, D_MODEL >> 2);
+        remove_zero_tiles(weightVec[NUM_HEAD*3 + 1], D_MODEL, D_FF >> 2);
+        remove_zero_tiles(weightVec[NUM_HEAD*3 + 2], D_FF, D_MODEL >> 2);
+    }
+    else if (sparseFormat == Format::HIDDEN_KEY){
+        for (int i = 0; i < 3; ++i) {
+            interleave_hidden_flag_zero_free(weightVec[i], D_MODEL,D_Q >> 2, hidden_flag);
+        }
+        interleave_hidden_flag_zero_free(weightVec[NUM_HEAD*3], NUM_HEAD * D_Q, D_MODEL >> 2, hidden_flag);
+        interleave_hidden_flag_zero_free(weightVec[NUM_HEAD*3+1], D_MODEL, D_FF >> 2, hidden_flag);
+        interleave_hidden_flag_zero_free(weightVec[NUM_HEAD*3+2], D_FF, D_MODEL >> 2, hidden_flag);
+    }
+
     TransformerBlock selfatten(D_SEQ, D_MODEL, D_Q, NUM_HEAD, D_FF,
                                weightVec, flagVec, KERNEL_DIM, MAX_COL,
                                &hidden_flag, sparseFormat);
@@ -173,6 +192,6 @@ interleave_hidden_flag_zero_free(const_cast<uint32_t*&>(value_kernel), D_MODEL, 
 }
 
 int main() {
-    inference(10, Format::DYNAMIC);
+    inference(10, Format::HIDDEN_KEY);
     return 0;
 }

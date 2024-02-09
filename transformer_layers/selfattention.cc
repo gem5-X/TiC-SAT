@@ -14,20 +14,6 @@ SingleHeadSelfAttn::SingleHeadSelfAttn(std::size_t pre_seq_len, std::size_t inpu
     head_hidden_size_ = head_hidden_size;
     hidden_flag_ = hidden_flag;
 
-    if (sparseFormat == Format::WITH_FLAG){
-        for (int i = 0; i < 3; i++){
-            // call remove_zero_tiles for each weight vector in query, key and value
-            remove_zero_tiles(weightVector[i], (int) input_dim, (int) head_hidden_size >> 2);
-        }
-    }
-    else if (sparseFormat == Format::HIDDEN_KEY){
-        for (int i = 0; i < 3; ++i) {
-            interleave_hidden_flag_zero_free(weightVector[i], (int) input_dim,
-                                             (int) head_hidden_size >> 2, *hidden_flag);
-        }
-    }
-
-
     if (sparseFormat == Format::NON_PRUNED || sparseFormat == Format::DYNAMIC ||
     sparseFormat == Format::WITH_FLAG || sparseFormat == Format::META_DATA ||
     sparseFormat == Format::HIDDEN_KEY || sparseFormat == Format::INTERLEAVED ){
