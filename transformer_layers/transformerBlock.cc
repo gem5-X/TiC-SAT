@@ -63,4 +63,8 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     std::cout << "Add norm rearranged"  << std::endl;
     addNorm->computeRearranged(condense_out, output);
     system("m5 dumpresetstats");
+    print_weight(output, seq_len, input_dim_ >> 2);
+    std::cout << std::endl;
+    print_weight(output, 1, input_dim_ >> 2);
+    getchar();
 }
