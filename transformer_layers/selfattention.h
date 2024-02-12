@@ -7,9 +7,16 @@
 
 class SingleHeadSelfAttn{
     public:
-        SingleHeadSelfAttn(std::size_t pre_seq_len, std::size_t input_dim_, std::size_t head_hidden_size,
-                           uint32_t** weightVector, uint32_t** flagVector, uint32_t*, Format format);
-        ~SingleHeadSelfAttn();
+        SingleHeadSelfAttn(std::size_t pre_seq_len, std::size_t input_dim,
+                           std::size_t head_hidden_size, Format sparseFormat);
+
+        SingleHeadSelfAttn(size_t pre_seq_len, size_t input_dim, size_t head_hidden_size, uint32_t **weightVector,
+                           uint32_t **flagVector, uint32_t *hidden_flag, Format sparseFormat);
+
+    SingleHeadSelfAttn(size_t pre_seq_len, size_t input_dim, size_t head_hidden_size, uint32_t **weightVector,
+                       int **col_ptr, int **row_ptr, uint32_t ***values, Format sparseFormat);
+
+    ~SingleHeadSelfAttn();
         void compute(std::size_t seq_len, uint32_t *input, uint32_t *output);
 
     private:
@@ -26,5 +33,6 @@ class SingleHeadSelfAttn{
 
         uint32_t* hidden_flag_;
         std::size_t pre_seq_len_;
+        std::size_t input_dim_;
         std::size_t head_hidden_size_;
 };
