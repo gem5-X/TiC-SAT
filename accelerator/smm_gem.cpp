@@ -96,7 +96,7 @@ uint64_t smmQueue(uint64_t rm, uint64_t rn, uint64_t tid=0) {
 * -- ra = Thread index.
 * -- rn = Parameter value.
  */
-uint64_t smmParamWrite(uint64_t rm, uint64_t rn, int tid=0) {
+uint64_t smmParamWrite(uint64_t rm, uint64_t rn, uint64_t tid) {
     uint64_t res;
 
     __asm__ volatile(
