@@ -16,6 +16,7 @@
 
 
 void fill_sparse_kernel(uint32_t* kernel, int kernel_size);
+void fill_kernel(uint32_t* kernel, int kernel_size);
 void print_binary(uint32_t value);
 void fill_sparse_weight(uint32_t * kernel, uint32_t* sparse_flag, int n_row, int n_col, int sparsity);
 void load_kernel_from_file(std::vector<uint32_t> &kernel, int n_row, int n_col, const char *filename) ;
