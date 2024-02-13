@@ -9,10 +9,12 @@
 
 class Dense {
 public:
-    Dense(std::size_t input_dim, std::size_t output_dim,
+    Dense(size_t seq_len, std::size_t input_dim, std::size_t output_dim,
           uint32_t *weight, uint32_t *flag, const uint32_t* hidden_flag, Format format);
-    Dense(std::size_t input_size, std::size_t output_size, uint32_t *weightDense,
+    Dense(size_t seq_len,std::size_t input_size, std::size_t output_size, uint32_t *weightDense,
           int *col_ptr, int *row_ind, uint32_t **values, Format format);
+
+    Dense(size_t seq_len, size_t input_size, size_t output_size, uint32_t *weightDense, Format format);
 
     ~Dense();
 
@@ -33,5 +35,7 @@ private:
     uint32_t **values_;
     const uint32_t *hidden_flag_;
     Format format_;
+
+    SparseMatrixMultiplier* sparseMatrixMultiplier_;
 
 };

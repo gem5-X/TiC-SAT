@@ -23,6 +23,8 @@ class SingleHeadSelfAttn{
         Dense* query_layer;
         Dense* key_layer;
         Dense* value_layer;
+        SparseMatrixMultiplier* sparseMatrixMultiplier_QKT;
+        SparseMatrixMultiplier* sparseMatrixMultiplier_att_v;
         Softmax* softmax;
 
         uint32_t* query_layer_out;

@@ -34,12 +34,12 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
                                               flagVector + n * 3, hidden_flag, sparseFormat);
     }
 
-    condense = new Dense(num_heads * head_hidden_size, input_dim, weightVector[num_heads * 3],
+    condense = new Dense(pre_seq_len, num_heads * head_hidden_size, input_dim, weightVector[num_heads * 3],
                          flagVector[num_heads * 3], hidden_flag, sparseFormat);
 
-    feedForward0 = new Dense(input_dim, ff_size, weightVector[num_heads * 3 + 1],
+    feedForward0 = new Dense(pre_seq_len, input_dim, ff_size, weightVector[num_heads * 3 + 1],
                              flagVector[num_heads * 3 + 1], hidden_flag, sparseFormat);
-    feedForward1 = new Dense(ff_size, input_dim, weightVector[num_heads * 3 + 2],
+    feedForward1 = new Dense(pre_seq_len, ff_size, input_dim, weightVector[num_heads * 3 + 2],
                              flagVector[num_heads * 3 + 2], hidden_flag, sparseFormat);
 }
 
@@ -56,14 +56,14 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
                                               col_ptr + n * 3, row_ptr + n * 3, values + n * 3, sparseFormat);
     }
 
-    condense = new Dense(num_heads * head_hidden_size, input_dim, weightVector[num_heads * 3],
+    condense = new Dense(pre_seq_len, num_heads * head_hidden_size, input_dim, weightVector[num_heads * 3],
                          col_ptr[num_heads * 3], row_ptr[num_heads * 3], values[num_heads * 3], sparseFormat);
 
-    feedForward0 = new Dense(input_dim, ff_size, weightVector[num_heads * 3 + 1],
+    feedForward0 = new Dense(pre_seq_len, input_dim, ff_size, weightVector[num_heads * 3 + 1],
                              col_ptr[num_heads * 3 + 1], row_ptr[num_heads * 3 + 1], values[num_heads * 3 + 1],
                              sparseFormat);
 
-    feedForward1 = new Dense(ff_size, input_dim, weightVector[num_heads * 3 + 2],
+    feedForward1 = new Dense(pre_seq_len, ff_size, input_dim, weightVector[num_heads * 3 + 2],
                              col_ptr[num_heads * 3 + 2], row_ptr[num_heads * 3 + 2], values[num_heads * 3 + 2],
                              sparseFormat);
 }
