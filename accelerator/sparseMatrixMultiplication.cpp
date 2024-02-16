@@ -18,10 +18,13 @@ void SparseMatrixMultiplier::processMultiplication(uint32_t *input, uint32_t *ou
     uint32_t *inPtr;
     uint32_t *outPtr;
 
+    // std::cout << "Weights at row: " << std::dec << row << " col: " << col << " are: " << std::endl;
     for (int k = 0; k < rowBlockSize * colBlockSize; k++) {
         uint32_t weight = values[k];
+        // std::cout << std::hex << weight << " ";
         smmParamWrite(k * W_DATA, weight, 0);
     }
+    // std::cout << std::endl;
 
     // Process the multiplication
     int base_col_idx = row * MAX_COL * seq_len;
@@ -115,22 +118,28 @@ void SparseMatrixMultiplier::computeInterleavedMetaData(uint32_t *input, uint32_
     int metadata_block_size = (BLOCK_SIZE + 32 - 1) / 32;
     int metadata_offset = 32 - std::min(32, row_in_w);  // Offset in case the metadata is not aligned to 32 bits
 
+    std::cout << "Interleaved Meta Data" << std::endl;
+
     for (int i=0; i<col_in_w; i++){
+        // std::cout << "column: " << std::dec << i << std::endl;
         uint32_t* next_block = ((uint32_t*) values) + *values;    // Compute when the next block starts
+        // std::cout << "offset: " << std::dec << *values << std::endl;
         values++;
         uint32_t* metadata;
-        *metadata = *values;                // Read the metadata
+        metadata = (uint32_t*) values;                // Read the metadata
         counter32 = metadata_offset;
         values += metadata_block_size;      // Skip the metadata
-        int row = 0;
+        int row = 0;   
+        // for (int j = 0; j < metadata_block_size; j++) {
+        //     std::cout << std::hex << metadata[j] << " ";
+        // }
 
         while (values < next_block) {
             if (counter32 == 32) {
                 counter32 = 0;
                 metadata++;
             }
-            if (!(*metadata & (0x80000000 >> counter32++))) {
-                values += KERNEL_DIM * MAX_COL;
+            if (!(*metadata & (0x00000001 << counter32++))) {
                 row++;
                 continue;
             }

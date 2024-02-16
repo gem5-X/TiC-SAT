@@ -10,7 +10,7 @@
 
 int main(){
     std::string dir_name = "/home/alireza/CLionProjects/FvllMontiTransformer/data16";
-    Format format = Format::WITH_FLAG;
+    Format format = Format::INTERLEAVED;
     const uint32_t hidden_flag = 0xAAAAAAAA;
     uint32_t* tensor_in = new uint32_t [D_SEQ * D_MODEL >> 2];
     loadWeight(-1, -1, D_SEQ * D_MODEL >> 2, tensor_in, 0, dir_name, nullptr);
@@ -49,6 +49,9 @@ int main(){
 
         int nnz = dense2csr(query_kernel, D_MODEL, D_Q >> 2, col_ptr, row_ptr, values);
     }
+    else if (format == Format::INTERLEAVED){
+        dense2interleavedMetaData(query_kernel, D_MODEL, D_Q >> 2);
+    }
 
     loadWeight(0, 10, head_flag_size, query_flag, 10, dir_name, nullptr);
     if (format == Format::META_DATA){
@@ -57,8 +60,10 @@ int main(){
     } else if (format == Format::CSC || format == Format::CSR){
         auto testDense = new Dense(D_MODEL, D_Q, query_kernel, col_ptr, row_ptr, values, format);
         testDense->compute(D_SEQ, tensor_in, out);
-    }
-    else{
+    } else if (format == Format::INTERLEAVED){
+        auto testDense = new Dense(D_MODEL, D_Q, query_kernel, values, format);
+        testDense->compute(D_SEQ, tensor_in, out);
+    } else{
         auto testDense = new Dense(D_MODEL, D_Q, query_kernel, query_flag, &hidden_flag, format);
         testDense->compute(D_SEQ, tensor_in, out);
     }

@@ -15,7 +15,7 @@ void inference(int sparsityPercentage, Format sparseFormat){
 
     std::cout<<"First line" << std::endl;
 #ifdef DEVELOP
-    std::string dir_name = "/home/alireza/CLionProjects/FvllMontiTransformer/data16";
+    std::string dir_name = "/home/rafa/Documents/transformercpp/data16";
 #else
     std::string dir_name = "/mnt/data";
 #endif
@@ -191,6 +191,14 @@ void inference(int sparsityPercentage, Format sparseFormat){
         dense2csc(weightVec[NUM_HEAD*3+2], D_FF, D_MODEL >> 2, col_ptr[NUM_HEAD*3+2],
                   row_ptr[NUM_HEAD*3+2], values[NUM_HEAD*3+2]);
     }
+    else if(sparseFormat == Format::INTERLEAVED){
+        for (int i = 0; i < NUM_HEAD * 3; ++i) {
+            dense2interleavedMetaData(weightVec[i], D_MODEL, D_Q >> 2);
+        }
+        dense2interleavedMetaData(weightVec[NUM_HEAD*3], NUM_HEAD * D_Q, D_MODEL >> 2);
+        dense2interleavedMetaData(weightVec[NUM_HEAD*3+1], D_MODEL, D_FF >> 2);
+        dense2interleavedMetaData(weightVec[NUM_HEAD*3+2], D_FF, D_MODEL >> 2);
+    }
 
     if (sparseFormat == Format::CSC || sparseFormat == Format::CSR){
         TransformerBlock selfatten(D_SEQ, D_MODEL, D_Q, NUM_HEAD, D_FF,
@@ -205,7 +213,7 @@ void inference(int sparsityPercentage, Format sparseFormat){
 
 int main() {
     for (int sparsity = 10; sparsity <= 90; sparsity += 20) {
-        inference(sparsity, Format::CSC);
+        inference(sparsity, Format::INTERLEAVED);
     }
     return 0;
 }

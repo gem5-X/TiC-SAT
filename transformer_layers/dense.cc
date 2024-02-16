@@ -44,6 +44,8 @@ void Dense::multiplyweight(std::size_t seq_len, uint32_t *input, uint32_t *outpu
     } else if (format_ == Format::CSC || format_ == Format::CSR ) {
         sparseMatrixMultiplier_->compute( input, output, (const int *)col_ptr_, (const int *)row_ptr_,
                                         (const uint32_t**) values_);
+    } else if (format_ == Format::INTERLEAVED) {
+        sparseMatrixMultiplier_->compute(input, output, nullptr, nullptr, weight);    
     } else {
 
             throw std::runtime_error("Unsupported format");
