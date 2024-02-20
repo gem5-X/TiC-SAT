@@ -15,9 +15,9 @@ void inference(int sparsityPercentage, Format sparseFormat){
 
     std::cout<<"First line" << std::endl;
 #ifdef DEVELOP
-    std::string dir_name = "/home/alireza/CLionProjects/FvllMontiTransformer/data4";
+    std::string dir_name = "/home/alireza/CLionProjects/FvllMontiTransformer/data16";
 #else
-    std::string dir_name = "/mnt/data4";
+    std::string dir_name = "/mnt/data16";
 #endif
 
     uint32_t* tensor_in = new uint32_t [D_SEQ * D_MODEL >> 2];
@@ -212,8 +212,8 @@ void inference(int sparsityPercentage, Format sparseFormat){
 }
 
 int main() {
-    for (int sparsity = 10; sparsity <= 90; sparsity += 20) {
-        inference(sparsity, Format::INTERLEAVED);
+    for (int sparsity = 30; sparsity <= 90; sparsity += 30) {
+        inference(sparsity, Format::DYNAMIC);
     }
     return 0;
 }

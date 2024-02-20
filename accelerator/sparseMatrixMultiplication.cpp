@@ -234,26 +234,50 @@ void SparseMatrixMultiplier::computeNonPruned(uint32_t *input, uint32_t *output,
 void SparseMatrixMultiplier::compute(uint32_t *input, uint32_t *output,
                                      const int *col_ptr, const int *row_ptr, const uint32_t **values) {
     if (this->format_ == Format::CSR) {
+        std::cout<<"CSR"<<std::endl;
+        system("m5 resetstats");
         computeCSR(input, output, col_ptr, row_ptr, values);
+        system("m5 dumpresetstats");
     } else if (this->format_ == Format::CSC) {
+        std::cout<<"CSC"<<std::endl;
+        system("m5 resetstats");
         computeCSC(input, output, col_ptr, row_ptr, values);
+        system("m5 dumpresetstats");
     }
 }
 
 void SparseMatrixMultiplier::compute(uint32_t *input, uint32_t *output,
                                      const int *row_ptr, const int *col_ind, const uint32_t *values) {
     if (this->format_ == Format::META_DATA) {
+        std::cout<<"META_DATA"<<std::endl;
+        system("m5 resetstats");
         computeMetaData(input, output, row_ptr, col_ind, values);
+        system("m5 dumpresetstats");
     } else if (this->format_ == Format::INTERLEAVED) {
+        std::cout<<"INTERLEAVED"<<std::endl;
+        system("m5 resetstats");
         computeInterleavedMetaData(input, output, values);
+        system("m5 dumpresetstats");
     } else if (this->format_ == Format::WITH_FLAG) {
+        std::cout<<"WITH_FLAG"<<std::endl;
+        system("m5 resetstats");
         computeWithFlag(input, output, (uint32_t *) row_ptr, values);
+        system("m5 dumpresetstats");
     } else if (this->format_ == Format::HIDDEN_KEY) {
+        std::cout<<"HIDDEN_KEY"<<std::endl;
+        system("m5 resetstats");
         computeHiddenKey(input, output, (uint32_t*)row_ptr, values);
+        system("m5 dumpresetstats");
     } else if (this->format_ == Format::DYNAMIC) {
+        std::cout<<"DYNAMIC"<<std::endl;
+        system("m5 resetstats");
         computeDynamic(input, output, values);
+        system("m5 dumpresetstats");
     } else if (this->format_ == Format::NON_PRUNED) {
+        std::cout<<"NON_PRUNED"<<std::endl;
+        system("m5 resetstats");
         computeNonPruned(input, output, values);
+        system("m5 dumpresetstats");
     }
 }
 

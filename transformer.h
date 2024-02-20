@@ -7,8 +7,8 @@
 
 #define D_Q 64
 #define D_SEQ 512
-#define D_MODEL 768
-#define NUM_HEAD 12
-#define D_FF 3072
+#define D_MODEL 768//1024 //768
+#define NUM_HEAD 12//16 //12
+#define D_FF 3072//4096 //3072
 
 #endif //FVLLMONTITRANSFORMER_TRANSFORMER_H
