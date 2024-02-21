@@ -4,6 +4,7 @@
 
 #include "transformerBlock.h"
 #include "debuggerFunctions.h"
+#include "../transformer.h"
 
 // A base constructor for the TransformerBlock class.
 // It initializes the objects pre_seq_len, input_dim, head_hidden_size, num_heads, ff_size, sparseFormat
@@ -14,9 +15,6 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
     head_hidden_size_ = head_hidden_size;
     input_dim_ = input_dim;
     ff_size_ = ff_size;
-    multihead_out = new uint32_t[pre_seq_len * num_heads * head_hidden_size >> 2]();
-    condense_out = new uint32_t[pre_seq_len * input_dim >> 2]();
-    intermediateFF = new uint32_t[pre_seq_len * ff_size >> 2]();
     addNorm = new AddNormalize(pre_seq_len, input_dim, KERNEL_DIM, MAX_COL);
 }
 
@@ -72,8 +70,9 @@ TransformerBlock::TransformerBlock(std::size_t pre_seq_len, std::size_t input_di
 TransformerBlock::~TransformerBlock() = default;
 
 
-void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *output) {
-//    system("m5 resetstats");
+void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *output, uint32_t *multihead_out,
+                               uint32_t *condense_out, uint32_t *intermediateFF) {
+    system("m5 resetstats");
     for (int n = 0; n < num_heads_; n++) {
         std::cout << "Head : " << n << std::endl;
         selfatten[n]->compute(seq_len, input, multihead_out + n * (seq_len * head_hidden_size_ >> 2));
@@ -85,7 +84,7 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
     std::cout << "Add Norm" << std::endl;
     addNorm->computeRearranged(input, condense_out);
 
-//    system("m5 dumpresetstats");
+    system("m5 dumpresetstats");
 
     std::cout << "Feed Forward 0" << std::endl;
     feedForward0->compute(seq_len, condense_out, intermediateFF);
@@ -97,9 +96,9 @@ void TransformerBlock::compute(std::size_t seq_len, uint32_t *input, uint32_t *o
 
     std::cout << "Add norm rearranged" << std::endl;
     addNorm->computeRearranged(condense_out, output);
-//    system("m5 dumpresetstats");
-//    print_weight(output, seq_len, input_dim_ >> 2);
-//    std::cout << std::endl;
-//    print_weight(output, 1, input_dim_ >> 2);
-//    getchar();
+    system("m5 dumpresetstats");
+    print_weight(output, seq_len, input_dim_ >> 2);
+    std::cout << std::endl;
+    print_weight(output, 1, input_dim_ >> 2);
+    getchar();
 }

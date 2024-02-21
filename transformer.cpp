@@ -8,6 +8,17 @@
 //#define KERNEL_DIM SA_SIZE
 //#define MAX_COL (SA_SIZE/4)
 
+// input tensor
+uint32_t tensor_in [D_SEQ * D_MODEL >> 2] = {0};
+
+// output tensor
+uint32_t out[D_SEQ*D_MODEL >> 2] = {0};
+
+// intermediate tensor
+uint32_t multihead_out[D_SEQ * NUM_HEAD * D_Q >> 2] = {0};
+uint32_t condense_out [D_SEQ * D_MODEL >> 2]= {0};
+uint32_t intermediateFF [D_SEQ * D_FF >> 2] = {0};
+
 
 void inference(int sparsityPercentage, Format sparseFormat){
     uint32_t hidden_flag ;
@@ -20,7 +31,6 @@ void inference(int sparsityPercentage, Format sparseFormat){
     std::string dir_name = "/mnt/data16";
 #endif
 
-    uint32_t* tensor_in = new uint32_t [D_SEQ * D_MODEL >> 2];
     #ifdef RELOAD_WEIGHT
         loadWeight(-1, -1, D_SEQ * D_MODEL >> 2, tensor_in, 0, dir_name, nullptr);
     #else
@@ -37,8 +47,6 @@ void inference(int sparsityPercentage, Format sparseFormat){
     #endif
 
 
-    uint32_t* out = new uint32_t [D_SEQ*D_MODEL >> 2]();
-
     uint32_t * weightVec[3*NUM_HEAD+3];
     uint32_t * flagVec[3*NUM_HEAD+3];
     int* col_ptr[3*NUM_HEAD+3];
@@ -48,23 +56,35 @@ void inference(int sparsityPercentage, Format sparseFormat){
     int head_qkv_size = D_Q* D_MODEL >> 2;
     int head_flag_size = (D_Q* D_MODEL) / (32* KERNEL_DIM * MAX_COL);
 
+    uint32_t query_kernel [NUM_HEAD][D_Q* D_MODEL >> 2] = {0};
+    uint32_t query_flag [NUM_HEAD][(D_Q* D_MODEL) / (32* KERNEL_DIM * MAX_COL)] = {0};
+
+    uint32_t key_kernel  [NUM_HEAD][ D_Q* D_MODEL >> 2] = {0};
+    uint32_t key_flag  [NUM_HEAD][(D_Q* D_MODEL) / (32 * KERNEL_DIM * MAX_COL)] = {0};
+
+    uint32_t value_kernel  [NUM_HEAD][ D_Q* D_MODEL >> 2] = {0};
+    uint32_t value_flag [NUM_HEAD] [D_Q* D_MODEL / (32* KERNEL_DIM * MAX_COL)] = {0};
+
+
     for (int n=0; n<NUM_HEAD; n++){
-        volatile auto query_kernel = new uint32_t [D_Q* D_MODEL >> 2]();
-        volatile auto query_flag = new uint32_t [(D_Q* D_MODEL) / (32* KERNEL_DIM * MAX_COL)]();
+//        volatile auto query_kernel = new uint32_t [D_Q* D_MODEL >> 2]();
+//        volatile auto query_flag = new uint32_t [(D_Q* D_MODEL) / (32* KERNEL_DIM * MAX_COL)]();
+//
+//        volatile auto key_kernel = new uint32_t [ D_Q* D_MODEL >> 2]();
+//        volatile auto key_flag = new uint32_t [(D_Q* D_MODEL) / (32 * KERNEL_DIM * MAX_COL)]();
+//
+//        volatile auto value_kernel = new uint32_t [ D_Q* D_MODEL >> 2]();
+//        volatile auto value_flag = new uint32_t [D_Q* D_MODEL / (32* KERNEL_DIM * MAX_COL)]();
 
-        volatile auto key_kernel = new uint32_t [ D_Q* D_MODEL >> 2]();
-        volatile auto key_flag = new uint32_t [(D_Q* D_MODEL) / (32 * KERNEL_DIM * MAX_COL)]();
 
-        volatile auto value_kernel = new uint32_t [ D_Q* D_MODEL >> 2]();
-        volatile auto value_flag = new uint32_t [D_Q* D_MODEL / (32* KERNEL_DIM * MAX_COL)]();
 
 #ifdef RELOAD_WEIGHT
-        loadWeight(n, 0, head_qkv_size, query_kernel, sparsityPercentage, dir_name, &hidden_flag);
-        loadWeight(n, 1, head_qkv_size, key_kernel, sparsityPercentage, dir_name, &hidden_flag);
-        loadWeight(n, 2, head_qkv_size, value_kernel, sparsityPercentage, dir_name, &hidden_flag);
-        loadWeight(n, 10, head_flag_size, query_flag, sparsityPercentage, dir_name, nullptr);
-        loadWeight(n, 11, head_flag_size, key_flag, sparsityPercentage, dir_name, nullptr);
-        loadWeight(n, 12, head_flag_size, value_flag, sparsityPercentage, dir_name, nullptr);
+        loadWeight(n, 0, head_qkv_size, query_kernel[n], sparsityPercentage, dir_name, &hidden_flag);
+        loadWeight(n, 1, head_qkv_size, key_kernel[n], sparsityPercentage, dir_name, &hidden_flag);
+        loadWeight(n, 2, head_qkv_size, value_kernel[n], sparsityPercentage, dir_name, &hidden_flag);
+        loadWeight(n, 10, head_flag_size, query_flag[n], sparsityPercentage, dir_name, nullptr);
+        loadWeight(n, 11, head_flag_size, key_flag[n], sparsityPercentage, dir_name, nullptr);
+        loadWeight(n, 12, head_flag_size, value_flag[n], sparsityPercentage, dir_name, nullptr);
 #else
         fill_sparse_weight(query_kernel, query_flag, D_MODEL, D_Q >> 2, sparsityPercentage);
         fill_sparse_weight(key_kernel, key_flag, D_MODEL, D_Q >> 2, sparsityPercentage);
@@ -86,24 +106,25 @@ void inference(int sparsityPercentage, Format sparseFormat){
 #endif
 
 
-        weightVec[n*3] = query_kernel;
-        flagVec[n*3] = query_flag;
+        weightVec[n*3] = query_kernel[n];
+        flagVec[n*3] = query_flag[n];
 
-        weightVec[n*3 + 1] = key_kernel;
-        flagVec[n*3 + 1] = key_flag;
+        weightVec[n*3 + 1] = key_kernel[n];
+        flagVec[n*3 + 1] = key_flag[n];
 
-        weightVec[n*3 + 2] = value_kernel;
-        flagVec[n*3+2] = value_flag;
+        weightVec[n*3 + 2] = value_kernel[n];
+        flagVec[n*3+2] = value_flag[n];
     }
 
-    volatile auto condense_kernel = new uint32_t [ NUM_HEAD * D_Q * D_MODEL >> 2]();
-    volatile auto condense_flag = new uint32_t [ NUM_HEAD * D_Q * D_MODEL / (32 * KERNEL_DIM * MAX_COL)]();
 
-    volatile auto ff0_kernel = new uint32_t [ D_MODEL* D_FF >> 2]();
-    volatile auto ff0_flag = new uint32_t [ D_MODEL* D_FF / (32 * KERNEL_DIM * MAX_COL)]();
+        uint32_t condense_kernel[ NUM_HEAD * D_Q * D_MODEL >> 2] = {0};
+        uint32_t condense_flag[ NUM_HEAD * D_Q * D_MODEL / (32 * KERNEL_DIM * MAX_COL)] = {0};
 
-    volatile auto ff1_kernel = new uint32_t [ D_FF* D_MODEL >> 2]();
-    volatile auto ff1_flag = new uint32_t [ D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL)]();
+        uint32_t ff0_kernel[ D_MODEL* D_FF >> 2] = {0};
+        uint32_t ff0_flag[ D_MODEL* D_FF / (32 * KERNEL_DIM * MAX_COL)] = {0};
+
+        uint32_t ff1_kernel [ D_FF* D_MODEL >> 2] = {0};
+        uint32_t ff1_flag[ D_MODEL* D_FF / (32* KERNEL_DIM * MAX_COL)] = {0};
 
     #ifdef RELOAD_WEIGHT
         int n = -1; // n=-1 means that we are not saving/loading a head
@@ -200,20 +221,21 @@ void inference(int sparsityPercentage, Format sparseFormat){
         dense2interleavedMetaData(weightVec[NUM_HEAD*3+2], D_FF, D_MODEL >> 2);
     }
 
-    if (sparseFormat == Format::CSC || sparseFormat == Format::CSR){
-        TransformerBlock selfatten(D_SEQ, D_MODEL, D_Q, NUM_HEAD, D_FF,
-                                   weightVec, col_ptr, row_ptr, values, sparseFormat);
-        selfatten.compute(D_SEQ, tensor_in, out);
-    }else{
+
+//    if (sparseFormat == Format::CSC || sparseFormat == Format::CSR){
+//        TransformerBlock selfatten(D_SEQ, D_MODEL, D_Q, NUM_HEAD, D_FF,
+//                                   weightVec, col_ptr, row_ptr, values, sparseFormat);
+//        selfatten.compute(D_SEQ, tensor_in, out);
+//    }else{
         TransformerBlock selfatten(D_SEQ, D_MODEL, D_Q, NUM_HEAD, D_FF,
                                    weightVec, flagVec, &hidden_flag, sparseFormat);
-        selfatten.compute(D_SEQ, tensor_in, out);
-    }
+        selfatten.compute(D_SEQ, tensor_in, out, multihead_out, condense_out, intermediateFF);
+//    }
 }
 
 int main() {
     for (int sparsity = 30; sparsity <= 90; sparsity += 30) {
-        inference(sparsity, Format::DYNAMIC);
+        inference(sparsity, Format::HIDDEN_KEY);
     }
     return 0;
 }

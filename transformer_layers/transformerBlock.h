@@ -21,7 +21,7 @@ public:
 
     virtual ~TransformerBlock();
 
-    void compute(std::size_t seq_len, uint32_t *input, uint32_t *output);
+    void compute(std::size_t seq_len, uint32_t *input, uint32_t *output, uint32_t*, uint32_t*, uint32_t*);
 
 private:
     std::size_t num_heads_;
@@ -29,9 +29,6 @@ private:
     std::size_t input_dim_;
     std::size_t ff_size_;
     SingleHeadSelfAttn* selfatten[16];
-    uint32_t* multihead_out;
-    uint32_t* condense_out;
-    uint32_t* intermediateFF;
     uint32_t* intermediateFFBlockWise;
     AddNormalize* addNorm;
     Dense* condense;
