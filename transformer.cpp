@@ -222,20 +222,20 @@ void inference(int sparsityPercentage, Format sparseFormat){
     }
 
 
-//    if (sparseFormat == Format::CSC || sparseFormat == Format::CSR){
-//        TransformerBlock selfatten(D_SEQ, D_MODEL, D_Q, NUM_HEAD, D_FF,
-//                                   weightVec, col_ptr, row_ptr, values, sparseFormat);
-//        selfatten.compute(D_SEQ, tensor_in, out);
-//    }else{
+    if (sparseFormat == Format::CSC || sparseFormat == Format::CSR){
+        TransformerBlock selfatten(D_SEQ, D_MODEL, D_Q, NUM_HEAD, D_FF,
+                                   weightVec, col_ptr, row_ptr, values, sparseFormat);
+        selfatten.compute(D_SEQ, tensor_in, out, multihead_out, condense_out, intermediateFF);
+    }else{
         TransformerBlock selfatten(D_SEQ, D_MODEL, D_Q, NUM_HEAD, D_FF,
                                    weightVec, flagVec, &hidden_flag, sparseFormat);
         selfatten.compute(D_SEQ, tensor_in, out, multihead_out, condense_out, intermediateFF);
-//    }
+    }
 }
 
 int main() {
     for (int sparsity = 30; sparsity <= 90; sparsity += 30) {
-        inference(sparsity, Format::HIDDEN_KEY);
+        inference(sparsity, Format::INTERLEAVED);
     }
     return 0;
 }
