@@ -219,6 +219,9 @@ def build_test_system(np):
                 test_sys.cpu[i].addCheckerCpu()
             test_sys.cpu[i].createThreads()
 
+            if buildEnv['TARGET_ISA'] in "arm":
+                test_sys.realview.smm.cpus = test_sys.cpu
+
         # If elastic tracing is enabled when not restoring from checkpoint and
         # when not fast forwarding using the atomic cpu, then check that the
         # TestCPUClass is DerivO3CPU or inherits from DerivO3CPU. If the check
