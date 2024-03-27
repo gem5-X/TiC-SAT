@@ -1,12 +1,8 @@
-#include"transformer_layers/transformerBlock.h"
+#include "transformer_layers/transformerBlock.h"
 //#include"gtest/gtest.h"
 #include "transformer.h"
 #include "accelerator/smm_gem.h"
 #include <fstream>
-
-#ifndef RELOAD_WEIGHT
-#include <filesystem>
-#endif
 
 #include "transformer_layers/debuggerFunctions.h"
 
