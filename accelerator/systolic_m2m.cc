@@ -30,7 +30,7 @@
 // Constructor.
 #include <cstdint>
 #include <iostream>
-#include "systolic_m2m.hh"
+#include "systolic_m2m.h"
 
 bool SystolicMatrixMultiplication::loadWeights(int idx, uint32_t val) {
     for (int i=0; i < W_DATA; i++){

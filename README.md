@@ -16,16 +16,16 @@ m5 exit
 ```
 
 ## Sharing files between gem5-x and the host systems
-Once you have installed gem5-x, you can follow Section 3.3 of [this document](gem5_X_TechnicalManual_TiCSAT.pdf) to install *diod* and build the gem5-x binary again. This feature enables us to mount a shared folder from the host system in the gem5-x.
+Once you have installed gem5-x, you can follow Section 3.3 of [this document](gem5_X_TechnicalManual_TiCSAT.pdf) to install *diod* and build the gem5-x binary again. This feature enables us to mount a shared folder from the host system in the gem5-x. The provided `Makefile` outputs the executable into the folder `sim-shared`, which can be mounted in gem5-x.
 
 ## Compiling a transformer code
 In this repository, you can find the code to simulate a transformer model. To compile the code, you have two options. While using the compile command inside the gem5-x system is available, it is not recommended due to its prolonged execution time. Instead, follow the steps below to compile the code on your host system, place the compiled code in the shared folder, and then mount it in the gem5-x system.
 
 Use the following compilation command on your host system:
 ``` script
-aarch64-linux-gnu-g++ transformer.cpp -o transformer.o  [-DSA, -DSIMD] [-DSA_SIZE=16] [-DBWMA] [-DRELOAD_WEIGHT] [-DDEVELOP] [-DCORE_NUM=4] -fopenmp -O2
+make all
 ```
-The parameters you can have in your code are:
+The parameters you can modify in the `Makefile` are:
 
 - **-DSA** or **-DSIMD**: Indicates whether the system has a systolic array or an activated SIMD accelerator.
 - **-DSA_SIZE**: Assigns the size of the systolic array, e.g., 16 for SA16x16 or 8 for 8x8.
@@ -34,10 +34,10 @@ The parameters you can have in your code are:
 - **-DDEVELOP**: Enables all develop/debug functions. This model does NOT use accelerators and is solely for debugging functions.
 - **-DCORE_NUM**: Specifies the number of cores equipped with systolic array accelerators. For a single-core system, set it to 1. Dual- and quad-core systems have been tested.
 
-Once you have generated the output file, move transformer.o to the shared folder. Mount the folder in your gem5-x simulation.
+The `Makefile` will create the output executable in `sim-shared/transformer`. Mount the shared folder `sim-shared` in your gem5-x simulation.
 Now, you can run your code on gem5-x by the following command:
 ``` script
-./transformer.o
+./transformer
 ```
 
 ## Extract the statistics
