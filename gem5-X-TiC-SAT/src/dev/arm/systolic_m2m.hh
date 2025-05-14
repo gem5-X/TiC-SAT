@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 EPFL
+ * Copyright (c) 2025 EPFL
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * Authors: Alireza Amirshahi
+ *          Rafael Medina Morillas
+ *          Pedro Palacios Almendros
  */
 
 #ifndef __SYSTOLIC_M2M_H__
@@ -40,22 +42,66 @@
 
 #include <vector>
 
-#define KERNEL_DIM 16
-#define W_DATA 4
-#define MAX_COL 4
+#define KERNEL_DIM      4   // Dimension of systolic array tile
+#define ACTIVATION_BITS 32   // Number of bits for activation
+#define WEIGHT_BITS     8   // Number of bits for weight
+#define ACTIVATION_FP   1   // Wether the activation is floating point or not
+#define WEIGHT_FP       0   // Wether the weight is floating point or not
+
+#define CEILING_DIV(x,y)    (((x) + (y) - 1) / (y))
+#define BUS_WIDTH           32                                      // Width of the bus interfacing CPU and SA
+#define ACT_PER_BUS         (BUS_WIDTH / ACTIVATION_BITS)           // Number of activations per bus
+#define W_PER_BUS           (BUS_WIDTH / WEIGHT_BITS)               // Number of weights per bus
+#define ACTIVATION_MASK     ((1UL << ACTIVATION_BITS) - 1)          // Bit-mask for activation
+#define WEIGHT_MASK         ((1UL << WEIGHT_BITS) - 1)              // Bit-mask for weight
+#define MAX_ACT_COL         CEILING_DIV(KERNEL_DIM, ACT_PER_BUS)    // Number of 32-bit words to hold all activations in a column
+#define MAX_W_COL           CEILING_DIV(KERNEL_DIM, W_PER_BUS)      // Number of 32-bit words to hold all weights in a column
 
 #define mem2d(data,data_len,row,col)   data[((row)*(data_len))+(col)]
+
+#if ACTIVATION_BITS == 8
+    typedef int8_t activation_t;
+    typedef uint8_t u_activation_t;
+#elif ACTIVATION_BITS == 16
+    typedef int16_t activation_t;
+    typedef uint16_t u_activation_t;
+#elif ACTIVATION_BITS == 32
+    typedef int32_t activation_t;
+    typedef uint32_t u_activation_t;
+#if ACTIVATION_FP == 1
+    typedef union
+    {
+        float   fp;
+        int32_t bin;
+    } arith_activation_t;
+#endif
+#endif
+
+#if WEIGHT_BITS == 8
+    typedef int8_t weight_t;
+#elif WEIGHT_BITS == 16
+    typedef int16_t weight_t;
+#elif WEIGHT_BITS == 32
+    typedef int32_t weight_t;
+#if WEIGHT_FP == 1 && ACTIVATION_FP == 1    // Assume that if weights are FP32, activations are also FP32
+    typedef union
+    {
+        float   fp;
+        int32_t bin;
+    } arith_weight_t;
+#endif
+#endif
 
 class ArmSystem;
 class BaseCPU;
 
 struct SATile {
     SATile():
-    weights(new int8_t[KERNEL_DIM * KERNEL_DIM]),
-    inputMemory(new int8_t[KERNEL_DIM * KERNEL_DIM]),
+    weights(new weight_t[KERNEL_DIM * KERNEL_DIM]),
+    inputMemory(new activation_t[KERNEL_DIM * KERNEL_DIM]),
     outputMemory(new int32_t[KERNEL_DIM * (KERNEL_DIM+1)]),
-    inWaitingMemory(new int8_t[KERNEL_DIM * KERNEL_DIM]),
-    outWaitingMemory(new uint8_t[KERNEL_DIM * KERNEL_DIM])
+    inWaitingMemory(new activation_t[KERNEL_DIM * KERNEL_DIM]),
+    outWaitingMemory(new u_activation_t[KERNEL_DIM * KERNEL_DIM])
     {
         for (int i = 0; i < KERNEL_DIM*KERNEL_DIM; i++) {
             inputMemory[i] = 0;
@@ -70,11 +116,12 @@ struct SATile {
         }
     }
     
-    int8_t * weights;
-    int8_t * inputMemory;
+    weight_t * weights;
+    activation_t * inputMemory;
     int32_t * outputMemory;
-    int8_t * inWaitingMemory;
-    uint8_t * outWaitingMemory;
+    
+    activation_t * inWaitingMemory;
+    u_activation_t * outWaitingMemory;
     bool non_zero_tile = false;
 };
 

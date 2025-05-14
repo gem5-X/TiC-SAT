@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 EPFL
+ * Copyright (c) 2025 EPFL
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * Authors: Alireza Amirshahi
+ *          Rafael Medina Morillas
+ *          Pedro Palacios Almendros
  */
 
 #include "dev/arm/systolic_m2m.hh"
@@ -66,9 +68,9 @@ SystolicMatrixMultiplication::init()
 
 bool SystolicMatrixMultiplication::loadWeights(int tid, int idx, uint32_t val) {
 
-    //int idx= row * KERNEL_DIM + col * W_DATA;
-    for (int i=0; i < W_DATA; i++){
-        auto currVal = (int8_t)((val >> (8 * (W_DATA -i-1))) & 0xff);
+    //int idx= row * KERNEL_DIM + col * W_PER_BUS;
+    for (int i=0; i < W_PER_BUS; i++){
+        auto currVal = (weight_t)((val >> (WEIGHT_BITS * (W_PER_BUS -i-1))) & WEIGHT_MASK);
         tiles[tid]->weights[idx + i] = currVal;
     }
 
@@ -79,17 +81,17 @@ bool SystolicMatrixMultiplication::loadWeights(int tid, int idx, uint32_t val) {
 
 uint32_t SystolicMatrixMultiplication::inputQueue(int tid, int col, uint32_t val) {
     // Split the input to an array
-    for (int i=0; i < W_DATA; i++){
-        auto currVal = (int8_t)((val >> (8 * (W_DATA - i -1))) & 0xff);
-        int row_index = (col*W_DATA+i);
+    for (int i=0; i < ACT_PER_BUS; i++){ 
+        auto currVal = (activation_t)((val >> (ACTIVATION_BITS * (ACT_PER_BUS - i -1))) & ACTIVATION_MASK);
+        int row_index = (col*ACT_PER_BUS+i);
         mem2d(tiles[tid]->inWaitingMemory, KERNEL_DIM, row_index, KERNEL_DIM - row_index - 1) = currVal; // off-diagonal of the waiting memory
     }
 
     // Return the output
     uint32_t result = 0;
-    int result_idx = ((col+1)%MAX_COL) * W_DATA;
-    for (int i = 0; i < W_DATA; i++) {
-        result |=  mem2d(tiles[tid]->outWaitingMemory, KERNEL_DIM, KERNEL_DIM - result_idx - i - 1, result_idx + i ) << (8 * (W_DATA - i - 1));
+    int result_idx = ((col+1)%MAX_ACT_COL) * ACT_PER_BUS;
+    for (int i = 0; i < ACT_PER_BUS; i++) {
+        result |=  mem2d(tiles[tid]->outWaitingMemory, KERNEL_DIM, KERNEL_DIM - result_idx - i - 1, result_idx + i ) << (ACTIVATION_BITS * (ACT_PER_BUS - i - 1));
     }
 
     return result;
@@ -97,25 +99,24 @@ uint32_t SystolicMatrixMultiplication::inputQueue(int tid, int col, uint32_t val
 
 void SystolicMatrixMultiplication::printWeights() {
     //std::cout << std::hex << (uint32_t) inputMemory[0] << std::endl;
-    for (int i=0; i<4; i++){
-	    std::cout<<"Tile " << i << std::endl;
-	    for (int j=0; j< KERNEL_DIM * KERNEL_DIM; j++)
-	    	std::cout << std::hex << tiles[i]->weights[j] << ", ";
-	    std::cout << std::endl;
+    for (SATile * tile : tiles){
+        for (int i=0; i< KERNEL_DIM * KERNEL_DIM; i++)
+            std::cout << std::hex << tile->weights[i] << ", ";
+        std::cout << std::endl;
     }
 }
 
 uint32_t SystolicMatrixMultiplication::readFlag(int tid, uint32_t val) {
-    return 0;
+    return KERNEL_DIM;
 }
 
 uint32_t SystolicMatrixMultiplication::streamInOut(int tid, uint32_t val) {
     tiles[tid]->non_zero_tile = false;
-	int col = MAX_COL - 1;
+	int col = MAX_ACT_COL - 1;
     // Split the input to an array
-    for (int i=0; i < W_DATA; i++){
-        auto currVal = (int8_t)((val >> (8 * (W_DATA - i -1))) & 0xff);
-        int row_index = (col*W_DATA+i);
+    for (int i=0; i < ACT_PER_BUS; i++){
+        auto currVal = (activation_t)((val >> (ACTIVATION_BITS * (ACT_PER_BUS - i -1))) & ACTIVATION_MASK);
+        int row_index = (col*ACT_PER_BUS+i);
         mem2d(tiles[tid]->inWaitingMemory, KERNEL_DIM, row_index, KERNEL_DIM - row_index - 1) = currVal; // off-diagonal of the waiting memory
     }
 
@@ -129,7 +130,21 @@ uint32_t SystolicMatrixMultiplication::streamInOut(int tid, uint32_t val) {
 
     // Multiply the input to the weight and accumulate to the output
     for (int i= KERNEL_DIM * KERNEL_DIM - 1; i >= 0 ; i--){
+#if ACTIVATION_FP == 1  // Assuming weight is only FP if activation is FP
+        arith_activation_t in, acc, out;
+        in.bin = tiles[tid]->inputMemory[i];
+        acc.bin = tiles[tid]->outputMemory[i];
+#if WEIGHT_FP == 1
+        arith_weight_t w;
+        w.bin = tiles[tid]->weights[i];
+        out.fp = in.fp * w.fp + acc.fp;
+#else   // WEIGHT_FP == 0
+        out.fp = in.fp * tiles[tid]->weights[i] + acc.fp;
+#endif  // WEIGHT_FP
+        tiles[tid]->outputMemory[i + KERNEL_DIM] = out.bin;
+#else   // ACTIVATION_FP == 0
         tiles[tid]->outputMemory[i + KERNEL_DIM] = int(tiles[tid]->inputMemory[i] * tiles[tid]->weights[i]) + tiles[tid]->outputMemory[i];
+#endif  // ACTIVATION_FP
     }
 
     // Shift the input memory to the right
@@ -145,14 +160,14 @@ uint32_t SystolicMatrixMultiplication::streamInOut(int tid, uint32_t val) {
             mem2d(tiles[tid]->outWaitingMemory, KERNEL_DIM, i, j) = mem2d(tiles[tid]->outWaitingMemory, KERNEL_DIM, i - 1, j);
         }
 //        std::cout << std::hex << mem2d(outputMemory, KERNEL_DIM, KERNEL_DIM, j) << std::endl;
-        mem2d(tiles[tid]->outWaitingMemory, KERNEL_DIM, 0, j) = (uint8_t)(mem2d(tiles[tid]->outputMemory, KERNEL_DIM, KERNEL_DIM, j) & 0xFF);
+        mem2d(tiles[tid]->outWaitingMemory, KERNEL_DIM, 0, j) = (u_activation_t)(mem2d(tiles[tid]->outputMemory, KERNEL_DIM, KERNEL_DIM, j) & ACTIVATION_MASK);
     }
 
 
     // Return the output
     uint32_t result = 0;
-    for (int i = 0; i < W_DATA; i++) {
-        result |=  mem2d(tiles[tid]->outWaitingMemory, KERNEL_DIM, KERNEL_DIM - i - 1, i ) << (8 * (W_DATA - i - 1));
+    for (int i = 0; i < ACT_PER_BUS; i++) {
+        result |=  mem2d(tiles[tid]->outWaitingMemory, KERNEL_DIM, KERNEL_DIM - i - 1, i ) << (ACTIVATION_BITS * (ACT_PER_BUS - i - 1));
 //        std::cout << std::hex << (int) mem2d(outWaitingMemory, KERNEL_DIM, KERNEL_DIM - i - 1, i ) << ",";
     }
     return result;

@@ -1,0 +1,1 @@
+To cross-compile, run cmake -D CMAKE_C_COMPILER=aarch64-linux-gnu-gcc -D CMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ ..

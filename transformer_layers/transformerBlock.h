@@ -10,13 +10,17 @@
 
 class TransformerBlock{
 public:
-    TransformerBlock(std::size_t pre_seq_len, std::size_t input_dim, std::size_t head_hidden_size, std::size_t num_heads,
-                     std::size_t ff_size, uint32_t ** weightVector,
-                     std::size_t kernelDim, std::size_t maxCol);
+    TransformerBlock(size_t pre_seq_len, size_t input_dim, size_t head_hidden_size, size_t num_heads, size_t ff_size);
+
+    TransformerBlock(size_t pre_seq_len, size_t input_dim, size_t head_hidden_size, size_t num_heads, size_t ff_size,
+                     uint32_t **weightVector, uint32_t **flagVector, uint32_t *hidden_flag, Format sparseFormatQVK, Format sparseFormatCondense, Format sparseFormatFF0, Format sparseFormatFF1);
+
+    TransformerBlock(size_t pre_seq_len, size_t input_dim, size_t head_hidden_size, size_t num_heads, size_t ff_size,
+                     uint32_t **weightVector, int **col_ptr, int **row_ptr, uint32_t ***values, Format sparseFormat);
 
     virtual ~TransformerBlock();
 
-    void compute(std::size_t seq_len, uint32_t *input, uint32_t *output);
+    void compute(std::size_t seq_len, uint32_t *input, uint32_t *output, uint32_t*, uint32_t*, uint32_t*);
 
 private:
     std::size_t num_heads_;
@@ -24,18 +28,11 @@ private:
     std::size_t input_dim_;
     std::size_t ff_size_;
     SingleHeadSelfAttn* selfatten[16];
-    uint32_t* multihead_out;
-    uint32_t* condense_out;
-    uint32_t* intermediateFF;
     uint32_t* intermediateFFBlockWise;
     AddNormalize* addNorm;
     Dense* condense;
     Dense* feedForward0;
     Dense* feedForward1;
-
-#ifndef BWMA
-    uint32_t* multihead_out_reshape;
-#endif
 
 };
 

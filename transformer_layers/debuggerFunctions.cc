@@ -1,7 +1,6 @@
 //
 // Created by alireza on 4/24/23.
 //
-#define MAX_COL (SA_SIZE/4)
 
 #include "debuggerFunctions.h"
 
@@ -49,13 +48,13 @@ void read_weight_from_file(const std::string& filename, uint32_t* kernel, int n_
 
 void blockWise2RowWise(const uint32_t * blockWise, uint32_t* rowWise, int n_row, int n_col){
     uint32_t* initialRowWise = rowWise;
-    for (int col=0; col<n_col/MAX_COL; col++){
-        rowWise = initialRowWise + col * MAX_COL;
+    for (int col=0; col<n_col/MAX_W_COL; col++){
+        rowWise = initialRowWise + col * MAX_W_COL;
         for (int row=0; row < n_row; row++){
-            for (int i=0; i<MAX_COL; i++){
+            for (int i=0; i<MAX_W_COL; i++){
                 *(rowWise + i) = *(blockWise+ i);
             }
-            blockWise += MAX_COL;
+            blockWise += MAX_W_COL;
             rowWise += n_col;
         }
     }
@@ -63,14 +62,14 @@ void blockWise2RowWise(const uint32_t * blockWise, uint32_t* rowWise, int n_row,
 
 void rowWise2BlockWise(const uint32_t* rowWise, uint32_t* blockWise, int n_row, int n_col) {
     const uint32_t* initialRowWise = rowWise;
-    for (int col = 0; col < n_col / MAX_COL; col++) {
-        rowWise = initialRowWise + col * MAX_COL;
+    for (int col = 0; col < n_col / MAX_W_COL; col++) {
+        rowWise = initialRowWise + col * MAX_W_COL;
         for (int row = 0; row < n_row; row++) {
-            for (int i = 0; i < MAX_COL; i++) {
+            for (int i = 0; i < MAX_W_COL; i++) {
                 *(blockWise + i) = *(rowWise + i);
             }
             rowWise += n_col;
-            blockWise += MAX_COL;
+            blockWise += MAX_W_COL;
         }
     }
 }
@@ -78,13 +77,13 @@ void rowWise2BlockWise(const uint32_t* rowWise, uint32_t* blockWise, int n_row, 
 
 void interleave_hidden_flag(uint32_t* kernel, int n_row, int n_col, uint32_t hidden_flag) {
     for (int i = 0; i < n_row / SA_SIZE; i++) {
-        for (int j = 0; j < n_col / MAX_COL; j++) {
-            int tile_index = (i * (n_col / MAX_COL) + j) * SA_SIZE * MAX_COL;
+        for (int j = 0; j < n_col / MAX_W_COL; j++) {
+            int tile_index = (i * (n_col / MAX_W_COL) + j) * SA_SIZE * MAX_W_COL;
             bool all_zeros = true;
 
             for (int ii = 0; ii < SA_SIZE; ii++) {
-                for (int jj = 0; jj < MAX_COL; jj++) {
-                    uint32_t value = kernel[tile_index + ii * MAX_COL + jj];
+                for (int jj = 0; jj < MAX_W_COL; jj++) {
+                    uint32_t value = kernel[tile_index + ii * MAX_W_COL + jj];
                     if (value != 0) {
                         all_zeros = false;
                         break;
@@ -100,44 +99,4 @@ void interleave_hidden_flag(uint32_t* kernel, int n_row, int n_col, uint32_t hid
             }
         }
     }
-}
-
-void interleave_hidden_flag_zero_free(uint32_t*& kernel, int n_row, int n_col, uint32_t hidden_flag) {
-    uint32_t * new_kernel;
-    new_kernel = new uint32_t [n_row * n_col]();
-    uint32_t * new_kernel_ptr = new_kernel;
-    int counter = 0;
-
-    for (int i = 0; i < n_row / SA_SIZE; i++) {
-        for (int j = 0; j < n_col / MAX_COL; j++) {
-            int tile_index = (i * (n_col / MAX_COL) + j) * SA_SIZE * MAX_COL;
-            bool all_zeros = true;
-
-            for (int ii = 0; ii < SA_SIZE; ii++) {
-                for (int jj = 0; jj < MAX_COL; jj++) {
-                    uint32_t value = kernel[tile_index + ii * MAX_COL + jj];
-                    if (value != 0) {
-                        all_zeros = false;
-                        break;
-                    }
-                }
-                if (!all_zeros) {
-                    break;
-                }
-            }
-
-            if (!all_zeros) {
-                for (int ii = 0; ii < SA_SIZE; ii++) {
-                    for (int jj = 0; jj < MAX_COL; jj++) {
-                        *new_kernel ++ = kernel[tile_index + ii * MAX_COL + jj];
-                    }
-                }
-            }
-            else{
-                *new_kernel ++ = hidden_flag;
-                counter ++;
-            }
-        }
-    }
-    kernel = new_kernel_ptr;
 }

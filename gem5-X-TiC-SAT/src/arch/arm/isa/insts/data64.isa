@@ -290,18 +290,18 @@ let {{
         "cmmemread", # mnem
         3, # num of regs interfaced
         """
-        /* CM Core Parameter Write
+        /* CM Core Memory Read
          * Instruction format: |____Opcode___|__rm__|_?|__ra__|__rn__|__rd__|
          * Bits:               |31_________21|20__16|15|14__10|9____5|4____0|
-         * Binary layout:      |0100_0001_000|0_1000|_0|001_11|01_001|0_1010|
-         * Hex layout:         |__4____1____0|____8_|__|_1____|D____2|____A_|
+         * Binary layout:      |0110_0001_000|0_1000|_0|001_11|01_001|0_1010|
+         * Hex layout:         |__6____1____0|____8_|__|_1____|D____2|____A_|
          * gem5 variables:     |_____________|_Op264|__|_Op364|_Op164|Dest64|
          *
          * Queueing arguments:
-         * -- rd = Success code.
-         * -- rm = Parameter x index.
-         * -- ra = Parameter value.
-         * -- rn = Parameter y index.
+         * -- rd = Read value.
+         * -- rm = _.
+         * -- ra = 'val' parameter to readFlag.
+         * -- rn = _.
          */
     
          SystolicMatrixMultiplication * smm =

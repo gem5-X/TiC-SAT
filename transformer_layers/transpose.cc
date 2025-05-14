@@ -2,40 +2,41 @@
 #include <iostream>
 
 void Transpose::transpose(const uint32_t* input, uint32_t* output, std::size_t width, std::size_t height) {
-    uint32_t swap[4];
-    std::size_t height_tile = height >> 2;
-    std::size_t width_tile = width >> 2;
+    uint32_t swap[ACT_PER_BUS];
+    std::size_t height_tile = height / ACT_PER_BUS;
+    std::size_t width_tile = width / ACT_PER_BUS;
     for (int i=0; i < height_tile; i++){
         for (int j=0; j < width_tile; j++){
-            for( int k=0; k< 4; k++){
-                swap[k] = input[(i * 4 + k) * width_tile + j];
+            for( int k=0; k< ACT_PER_BUS; k++){
+                swap[k] = input[(i * ACT_PER_BUS + k) * width_tile + j];
             }
 
-            for ( int k=0; k< 4; k++){
+            for ( int k=0; k< ACT_PER_BUS; k++){
                 uint32_t result = 0;
-                for (int s=0; s< 4; s++)
-                    result |= ((swap [s] >> (24 - 8*k)) & 0xFF) << (24 - 8*s);
-                output[(j * 4 + k) * height_tile + i] = result;
+                for (int s=0; s< ACT_PER_BUS; s++)
+                    result |= ((swap [s] >> ((ACT_PER_BUS - 1 - k) * ACTIVATION_BITS)) & ACTIVATION_MASK)
+                                 << ((ACT_PER_BUS - 1 - s) * ACTIVATION_BITS);
+                output[(j * ACT_PER_BUS + k) * height_tile + i] = result;
             }
         }
     }
 }
 
-void Transpose::transpose_rearranged(uint32_t* input, uint32_t* output, std::size_t width, std::size_t height,
-                                     std::size_t kernelSize, std::size_t maxCol) {
-    std::size_t tileRow = height / kernelSize;
-    std::size_t tileCol = width / kernelSize;
+void Transpose::transpose_rearranged(uint32_t* input, uint32_t* output, std::size_t width, std::size_t height) {
+    std::size_t tileRow = height / KERNEL_DIM;
+    std::size_t tileCol = width / KERNEL_DIM;
     for (int i=0; i < tileRow; i++){
         for (int j=0; j < tileCol; j++){
-            uint32_t * tileInputPtr = input + (j*tileRow + i) * (kernelSize * maxCol);
-            uint32_t * tileOutputPtr = output + (i* tileCol + j) * (kernelSize * maxCol);
-            for (int m=0; m< maxCol; m++){
-                for (int indexIn4 =0; indexIn4<4; indexIn4++){
-                    for ( int k=0; k< maxCol; k++){
+            uint32_t * tileInputPtr = input + (j*tileRow + i) * (KERNEL_DIM * MAX_ACT_COL);
+            uint32_t * tileOutputPtr = output + (i* tileCol + j) * (KERNEL_DIM * MAX_ACT_COL);
+            for (int m=0; m< MAX_ACT_COL; m++){
+                for (int indexInBus =0; indexInBus<ACT_PER_BUS; indexInBus++){
+                    for ( int k=0; k< MAX_ACT_COL; k++){
                         uint32_t result = 0;
-                        for (int s=0; s< 4; s++)
-                            result |= ((*(tileInputPtr+(4*k+s) *maxCol + m)>> (24 - 8*indexIn4)) & 0xFF) << (24 - 8*s);
-                        *(tileOutputPtr + m*4*maxCol + indexIn4* maxCol + k)= result;
+                        for (int s=0; s< ACT_PER_BUS; s++)
+                            result |= ((*(tileInputPtr+(ACT_PER_BUS*k+s) *MAX_ACT_COL + m)>> ((ACT_PER_BUS - 1 - indexInBus)*ACTIVATION_BITS)) & ACTIVATION_MASK)
+                                    << (ACT_PER_BUS - 1 - s)*ACTIVATION_BITS;
+                        *(tileOutputPtr + m*ACT_PER_BUS*MAX_ACT_COL + indexInBus* MAX_ACT_COL + k)= result;
                     }
                 }
             }
